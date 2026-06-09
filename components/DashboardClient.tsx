@@ -7,8 +7,9 @@ import { haversineKm } from "@/lib/geo";
 import {
   loadCustomSites,
   loadCustomAgents,
-  saveCustomSites,
-  saveCustomAgents,
+  saveCustomSite,
+  saveCustomAgent,
+  subscribeToCustomData,
 } from "@/lib/storage";
 import SitePanel from "./SitePanel";
 import AddItemModal from "./AddItemModal";
@@ -48,10 +49,28 @@ export default function DashboardClient({
     "agent",
   );
 
-  // Charger les ajouts persistés
+  // Charger les ajouts persistés + s'abonner aux changements temps réel
   useEffect(() => {
-    setCustomSites(loadCustomSites());
-    setCustomAgents(loadCustomAgents());
+    let cancelled = false;
+    (async () => {
+      const [sites, agents] = await Promise.all([
+        loadCustomSites(),
+        loadCustomAgents(),
+      ]);
+      if (cancelled) return;
+      setCustomSites(sites);
+      setCustomAgents(agents);
+    })();
+
+    const unsubscribe = subscribeToCustomData({
+      onSitesChange: setCustomSites,
+      onAgentsChange: setCustomAgents,
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   // Fusion base + ajouts custom
@@ -154,20 +173,28 @@ export default function DashboardClient({
     setViewMode("radius");
   };
 
-  const handleAddSite = (site: Site) => {
-    const next = [...customSites, site];
-    setCustomSites(next);
-    saveCustomSites(next);
+  const handleAddSite = async (site: Site) => {
+    // Mise à jour optimiste — l'abonnement realtime se chargera de la synchro
+    setCustomSites((prev) => [site, ...prev]);
     handleSelectSite(site.id);
+    const ok = await saveCustomSite(site);
+    if (!ok) {
+      // rollback en cas d'échec
+      setCustomSites((prev) => prev.filter((s) => s.id !== site.id));
+      alert("L'enregistrement du site a échoué. Vérifie ta connexion.");
+    }
   };
 
-  const handleAddAgent = (agent: Agent) => {
-    const next = [...customAgents, agent];
-    setCustomAgents(next);
-    saveCustomAgents(next);
+  const handleAddAgent = async (agent: Agent) => {
+    setCustomAgents((prev) => [agent, ...prev]);
     setSelectedAgentId(agent.id);
     setSearchMode("agent");
     setSearchQuery(agent.fullName);
+    const ok = await saveCustomAgent(agent);
+    if (!ok) {
+      setCustomAgents((prev) => prev.filter((a) => a.id !== agent.id));
+      alert("L'enregistrement de l'agent a échoué. Vérifie ta connexion.");
+    }
   };
 
   return (
