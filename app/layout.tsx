@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Phoenix Portal RH",
-  description: "Portail RH Phoenix - Suivi temps réel des sites et gardiens",
+  description: "Portail RH Phoenix - Cartographie des sites et agents",
 };
 
 export default function RootLayout({

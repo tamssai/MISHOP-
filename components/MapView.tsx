@@ -130,7 +130,7 @@ function SitesClusterLayer({
           <span style="color:#555">${site.lieu}</span>
           ${approx}
           <br><br>
-          <button data-site-id="${site.id}" style="background:#ff4214;color:white;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px">Voir les détails</button>
+          <button data-site-id="${site.id}" style="background:#ff4214;color:white;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px">Voir les agents</button>
         </div>`,
       );
       marker.on("popupopen", (e) => {

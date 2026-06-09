@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from "react";
 import type { Site, Agent } from "@/lib/data";
-import type { AgentWithDistance, ViewMode } from "./DashboardClient";
+import type {
+  AgentWithDistance,
+  ViewMode,
+  SearchMode,
+} from "./DashboardClient";
 
 const SITE_BADGE: Record<Site["status"], string> = {
   actif: "bg-emerald-100 text-emerald-700 ring-emerald-200",
@@ -25,11 +29,15 @@ export default function SitePanel({
   radiusKm,
   searchQuery,
   onChangeSearch,
-  searchResults,
+  searchMode,
+  onChangeSearchMode,
+  agentSearchResults,
+  siteSearchResults,
   selectedAgentId,
   onSelectSite,
   onClearSite,
   onSelectAgent,
+  onOpenAddModal,
 }: {
   allSites: Site[];
   site: Site | null;
@@ -40,24 +48,71 @@ export default function SitePanel({
   radiusKm: number;
   searchQuery: string;
   onChangeSearch: (q: string) => void;
-  searchResults: AgentWithDistance[];
+  searchMode: SearchMode;
+  onChangeSearchMode: (m: SearchMode) => void;
+  agentSearchResults: AgentWithDistance[];
+  siteSearchResults: Site[];
   selectedAgentId: string | null;
   onSelectSite: (id: string) => void;
   onClearSite: () => void;
   onSelectAgent: (id: string) => void;
+  onOpenAddModal: (mode: "site" | "agent") => void;
 }) {
+  const placeholder =
+    searchMode === "agent"
+      ? "Nom, prénom ou matricule…"
+      : "Client, lieu ou nom de site…";
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-          Rechercher un agent
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            Rechercher
+          </span>
+          <button
+            onClick={() => onOpenAddModal(searchMode)}
+            className="text-xs bg-phoenix-600 hover:bg-phoenix-700 text-white px-2.5 py-1 rounded-md font-medium flex items-center gap-1"
+          >
+            <span>+</span> Ajouter
+          </button>
+        </div>
+
+        <div className="bg-white rounded-lg p-1 flex text-xs mb-2 border border-slate-200">
+          <button
+            onClick={() => {
+              onChangeSearchMode("agent");
+              onChangeSearch("");
+            }}
+            className={`flex-1 py-1.5 rounded-md font-medium transition ${
+              searchMode === "agent"
+                ? "bg-phoenix-50 text-phoenix-700"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            👤 Agent
+          </button>
+          <button
+            onClick={() => {
+              onChangeSearchMode("site");
+              onChangeSearch("");
+            }}
+            className={`flex-1 py-1.5 rounded-md font-medium transition ${
+              searchMode === "site"
+                ? "bg-phoenix-50 text-phoenix-700"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            🏢 Site
+          </button>
+        </div>
+
         <div className="relative">
           <input
             type="search"
             value={searchQuery}
             onChange={(e) => onChangeSearch(e.target.value)}
-            placeholder="Nom, prénom ou matricule…"
+            placeholder={placeholder}
             className="w-full px-3 py-2 pr-8 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-phoenix-500"
           />
           {searchQuery && (
@@ -74,12 +129,19 @@ export default function SitePanel({
 
       <div className="flex-1 overflow-y-auto p-4">
         {searchQuery.trim() ? (
-          <SearchResults
-            results={searchResults}
-            selectedAgentId={selectedAgentId}
-            onSelectAgent={onSelectAgent}
-            hasSelectedSite={!!site}
-          />
+          searchMode === "agent" ? (
+            <AgentSearchResults
+              results={agentSearchResults}
+              selectedAgentId={selectedAgentId}
+              onSelectAgent={onSelectAgent}
+              hasSelectedSite={!!site}
+            />
+          ) : (
+            <SiteSearchResults
+              results={siteSearchResults}
+              onSelectSite={onSelectSite}
+            />
+          )
         ) : site ? (
           <SiteView
             site={site}
@@ -138,10 +200,10 @@ function SitesList({
   return (
     <div>
       <h2 className="font-bold text-lg mb-1">
-        Sites Phoenix Sénégal ({allSites.length})
+        Sites Phoenix ({allSites.length})
       </h2>
       <p className="text-sm text-slate-500 mb-3">
-        Cliquez sur un site pour voir les agents dans un rayon de {3} km.
+        Cliquez sur un site pour voir les agents à proximité.
       </p>
 
       <div className="mb-3">
@@ -262,8 +324,7 @@ function SiteView({
       </p>
       {site.approximate && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
-          ⚠ Position approximative (basée sur le nom du site). À affiner avec
-          les vraies coordonnées GPS.
+          ⚠ Position approximative (basée sur le nom du site).
         </p>
       )}
 
@@ -303,8 +364,8 @@ function SiteView({
             count={agentsInRadius.length}
           />
           <p className="text-xs text-slate-500 mb-2">
-            Agents Phoenix dont l&apos;adresse est dans un rayon de {radiusKm}{" "}
-            km autour de ce site.
+            Agents Phoenix dont l&apos;adresse de domicile est dans un rayon
+            de {radiusKm} km autour de ce site.
           </p>
           {agentsInRadius.length === 0 ? (
             <EmptyMsg text="Aucun agent dans le rayon." />
@@ -336,7 +397,7 @@ function SiteView({
   );
 }
 
-function SearchResults({
+function AgentSearchResults({
   results,
   selectedAgentId,
   onSelectAgent,
@@ -349,9 +410,7 @@ function SearchResults({
 }) {
   return (
     <div>
-      <h2 className="font-bold text-lg mb-1">
-        Résultats ({results.length})
-      </h2>
+      <h2 className="font-bold text-lg mb-1">Agents ({results.length})</h2>
       <p className="text-sm text-slate-500 mb-3">
         {hasSelectedSite
           ? "Distance calculée par rapport au site sélectionné."
@@ -378,6 +437,61 @@ function SearchResults({
             </p>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+function SiteSearchResults({
+  results,
+  onSelectSite,
+}: {
+  results: Site[];
+  onSelectSite: (id: string) => void;
+}) {
+  return (
+    <div>
+      <h2 className="font-bold text-lg mb-1">Sites ({results.length})</h2>
+      <p className="text-sm text-slate-500 mb-3">
+        Cliquez sur un site pour voir les agents à proximité.
+      </p>
+      {results.length === 0 ? (
+        <EmptyMsg text="Aucun site ne correspond." />
+      ) : (
+        <ul className="space-y-2">
+          {results.slice(0, 200).map((s) => (
+            <li key={s.id}>
+              <button
+                onClick={() => onSelectSite(s.id)}
+                className="w-full text-left p-3 rounded-lg border border-slate-200 hover:bg-phoenix-50 hover:border-phoenix-300 transition"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-sm truncate">
+                    {s.client}
+                  </span>
+                  <span
+                    className={`text-[10px] uppercase px-2 py-0.5 rounded-full ring-1 shrink-0 ${SITE_BADGE[s.status]}`}
+                  >
+                    {s.status}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 mt-1 truncate flex items-center gap-1">
+                  {s.approximate && (
+                    <span className="text-amber-500" title="Position approx.">
+                      ⚠
+                    </span>
+                  )}
+                  📍 {s.lieu}
+                </div>
+              </button>
+            </li>
+          ))}
+          {results.length > 200 && (
+            <li className="text-xs text-slate-400 italic text-center pt-2">
+              Affichage limité aux 200 premiers.
+            </li>
+          )}
+        </ul>
       )}
     </div>
   );
@@ -437,9 +551,7 @@ function AgentCard({
           </span>
         </div>
         <div className="text-xs text-slate-500 mt-0.5 flex items-center justify-between gap-2">
-          <span className="truncate">
-            Mat. {a.matricule || "—"}
-          </span>
+          <span className="truncate">Mat. {a.matricule || "—"}</span>
           {showDistance && (
             <span className="font-semibold text-slate-700 shrink-0">
               {a.distanceKm.toFixed(2)} km
