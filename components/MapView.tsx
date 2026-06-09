@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -10,6 +10,9 @@ import {
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
+import "leaflet.markercluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import type { Site, Gardien } from "@/lib/data";
 
 const SITE_COLORS: Record<Site["status"], string> = {
@@ -25,19 +28,20 @@ const GARDIEN_COLORS: Record<Gardien["status"], string> = {
 };
 
 function siteIcon(site: Site, isSelected: boolean) {
-  const border = isSelected ? "4px solid #ff4214" : "3px solid white";
+  const border = isSelected ? "3px solid #ff4214" : "2px solid white";
+  const size = isSelected ? 28 : 22;
   return L.divIcon({
     className: "",
     html: `<div class="site-marker ${
       site.status === "alerte" ? "pulse" : ""
-    }" style="background:${SITE_COLORS[site.status]};border:${border}">🏢</div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    }" style="background:${SITE_COLORS[site.status]};border:${border};width:${size}px;height:${size}px;font-size:12px">🏢</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
   });
 }
 
 function gardienIcon(g: Gardien, isHighlighted: boolean) {
-  const size = isHighlighted ? 22 : 14;
+  const size = isHighlighted ? 20 : 12;
   const border = isHighlighted ? "3px solid #ff4214" : "2px solid white";
   return L.divIcon({
     className: "",
@@ -47,12 +51,37 @@ function gardienIcon(g: Gardien, isHighlighted: boolean) {
   });
 }
 
-function FitSenegal({ sites }: { sites: Site[] }) {
+// Cluster icon stylé Phoenix
+function createClusterCustomIcon(cluster: L.MarkerCluster) {
+  const count = cluster.getChildCount();
+  let size = 36;
+  let bg = "#10b981";
+  if (count > 50) {
+    size = 52;
+    bg = "#c71d0b";
+  } else if (count > 20) {
+    size = 44;
+    bg = "#f02a0a";
+  } else if (count > 10) {
+    size = 40;
+    bg = "#ff6a3a";
+  }
+  return L.divIcon({
+    className: "",
+    html: `<div style="background:${bg};color:white;width:${size}px;height:${size}px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);font-size:13px">${count}</div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+function FitToSites({ sites }: { sites: Site[] }) {
   const map = useMap();
+  const didInit = useRef(false);
   useEffect(() => {
-    if (sites.length === 0) return;
+    if (didInit.current || sites.length === 0) return;
     const bounds = L.latLngBounds(sites.map((s) => [s.lat, s.lng]));
-    map.fitBounds(bounds, { padding: [40, 40] });
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 11 });
+    didInit.current = true;
   }, [map, sites]);
   return null;
 }
@@ -62,6 +91,78 @@ function FlyTo({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
   useEffect(() => {
     map.flyTo([lat, lng], zoom, { duration: 0.8 });
   }, [map, lat, lng, zoom]);
+  return null;
+}
+
+// Cluster layer pour les sites
+function SitesClusterLayer({
+  sites,
+  selectedSiteId,
+  onSelectSite,
+}: {
+  sites: Site[];
+  selectedSiteId: string | null;
+  onSelectSite: (id: string) => void;
+}) {
+  const map = useMap();
+  const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
+
+  useEffect(() => {
+    if (clusterRef.current) {
+      clusterRef.current.clearLayers();
+      map.removeLayer(clusterRef.current);
+    }
+
+    const cluster = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      spiderfyOnMaxZoom: true,
+      maxClusterRadius: 50,
+      iconCreateFunction: createClusterCustomIcon,
+    });
+
+    sites.forEach((site) => {
+      const marker = L.marker([site.lat, site.lng], {
+        icon: siteIcon(site, selectedSiteId === site.id),
+      });
+      const approx = site.approximate
+        ? '<br><em style="color:#9a3412">⚠ Position approximative</em>'
+        : "";
+      marker.bindPopup(
+        `<div style="font-size:13px;min-width:200px">
+          <strong>${site.client}</strong><br>
+          <span style="color:#555">${site.lieu}</span>
+          ${approx}
+          <br><br>
+          <button data-site-id="${site.id}" style="background:#ff4214;color:white;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px">Voir les détails</button>
+        </div>`,
+      );
+      marker.on("popupopen", (e) => {
+        const popup = e.popup;
+        const el = popup.getElement();
+        if (el) {
+          const btn = el.querySelector<HTMLButtonElement>("button[data-site-id]");
+          if (btn) {
+            btn.onclick = () => {
+              onSelectSite(site.id);
+              map.closePopup();
+            };
+          }
+        }
+      });
+      cluster.addLayer(marker);
+    });
+
+    map.addLayer(cluster);
+    clusterRef.current = cluster;
+
+    return () => {
+      if (clusterRef.current) {
+        map.removeLayer(clusterRef.current);
+        clusterRef.current = null;
+      }
+    };
+  }, [map, sites, selectedSiteId, onSelectSite]);
+
   return null;
 }
 
@@ -84,22 +185,27 @@ export default function MapView({
 }) {
   return (
     <MapContainer
-      // Centre approximatif du Sénégal
-      center={[14.4974, -14.4524]}
+      center={[14.4974, -14.4524]} // centre du Sénégal
       zoom={7}
+      minZoom={6}
+      maxZoom={18}
       scrollWheelZoom
       className="h-full w-full"
+      worldCopyJump={false}
     >
+      {/* Fond CartoDB Voyager - net, rapide, gratuit */}
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png"
+        attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        subdomains="abcd"
+        maxZoom={20}
       />
 
-      {!selectedSite && !selectedGardien && <FitSenegal sites={sites} />}
+      <FitToSites sites={sites} />
 
       {selectedSite && (
         <>
-          <FlyTo lat={selectedSite.lat} lng={selectedSite.lng} zoom={13} />
+          <FlyTo lat={selectedSite.lat} lng={selectedSite.lng} zoom={14} />
           <Circle
             center={[selectedSite.lat, selectedSite.lng]}
             radius={radiusKm * 1000}
@@ -122,27 +228,13 @@ export default function MapView({
         />
       )}
 
-      {sites.map((site) => (
-        <Marker
-          key={site.id}
-          position={[site.lat, site.lng]}
-          icon={siteIcon(site, selectedSite?.id === site.id)}
-          eventHandlers={{ click: () => onSelectSite(site.id) }}
-        >
-          <Popup>
-            <div className="text-sm">
-              <strong>{site.name}</strong>
-              <br />
-              {site.address}, {site.city}
-              <br />
-              <span className="text-slate-500">
-                Région : {site.region} · {site.status}
-              </span>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+      <SitesClusterLayer
+        sites={sites}
+        selectedSiteId={selectedSite?.id ?? null}
+        onSelectSite={onSelectSite}
+      />
 
+      {/* Marqueurs gardiens (rendus seulement quand un site est sélectionné ou recherche) */}
       {gardiens.map((g) => {
         const isHighlighted = selectedGardien?.id === g.id;
         return (
