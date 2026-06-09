@@ -13,12 +13,9 @@ export default function LoginPage({
         <div className="flex flex-col items-center mb-6">
           <img
             src="/phoenix-logo.svg"
-            alt="Phoenix Sénégal"
-            className="w-48 h-auto mb-3"
+            alt="Phoenix Sénégal — securite intelligente"
+            className="w-56 h-auto mb-3"
           />
-          <p className="text-sm text-slate-500 mt-1 italic tracking-wide">
-            securite intelligente
-          </p>
           <p className="text-xs text-slate-400 mt-2">Portail Ressources Humaines</p>
         </div>
 
