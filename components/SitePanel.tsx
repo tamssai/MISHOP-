@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Site, Gardien } from "@/lib/data";
-import type { GardienWithDistance, ViewMode } from "./DashboardClient";
+import type { Site, Agent } from "@/lib/data";
+import type { AgentWithDistance, ViewMode } from "./DashboardClient";
 
 const SITE_BADGE: Record<Site["status"], string> = {
   actif: "bg-emerald-100 text-emerald-700 ring-emerald-200",
@@ -10,59 +10,44 @@ const SITE_BADGE: Record<Site["status"], string> = {
   inactif: "bg-slate-100 text-slate-600 ring-slate-200",
 };
 
-const GARDIEN_BADGE: Record<Gardien["status"], string> = {
-  en_service: "bg-blue-100 text-blue-700",
-  en_pause: "bg-amber-100 text-amber-700",
-  hors_service: "bg-slate-100 text-slate-600",
-};
-
-const GARDIEN_LABEL: Record<Gardien["status"], string> = {
-  en_service: "En service",
-  en_pause: "En pause",
-  hors_service: "Hors service",
+const CONTRACT_BADGE: Record<Agent["contractType"], string> = {
+  CDI: "bg-emerald-100 text-emerald-700",
+  CDD: "bg-blue-100 text-blue-700",
 };
 
 export default function SitePanel({
   allSites,
   site,
-  assignedGardiens,
-  gardiensInRadius,
-  gardiensAllSorted,
+  agentsInRadius,
+  agentsAllSorted,
   viewMode,
   onChangeViewMode,
   radiusKm,
   searchQuery,
   onChangeSearch,
   searchResults,
-  selectedGardienId,
+  selectedAgentId,
   onSelectSite,
   onClearSite,
-  onSelectGardien,
+  onSelectAgent,
 }: {
   allSites: Site[];
   site: Site | null;
-  assignedGardiens: GardienWithDistance[];
-  gardiensInRadius: GardienWithDistance[];
-  gardiensAllSorted: GardienWithDistance[];
+  agentsInRadius: AgentWithDistance[];
+  agentsAllSorted: AgentWithDistance[];
   viewMode: ViewMode;
   onChangeViewMode: (mode: ViewMode) => void;
   radiusKm: number;
   searchQuery: string;
   onChangeSearch: (q: string) => void;
-  searchResults: GardienWithDistance[];
-  selectedGardienId: string | null;
+  searchResults: AgentWithDistance[];
+  selectedAgentId: string | null;
   onSelectSite: (id: string) => void;
   onClearSite: () => void;
-  onSelectGardien: (id: string) => void;
+  onSelectAgent: (id: string) => void;
 }) {
-  const sitesById = useMemo(
-    () => new Map<string, Site>(allSites.map((s) => [s.id, s])),
-    [allSites],
-  );
-
   return (
     <div className="flex flex-col h-full">
-      {/* Barre de recherche toujours visible */}
       <div className="p-4 border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
           Rechercher un agent
@@ -72,7 +57,7 @@ export default function SitePanel({
             type="search"
             value={searchQuery}
             onChange={(e) => onChangeSearch(e.target.value)}
-            placeholder="Nom de l'agent…"
+            placeholder="Nom, prénom ou matricule…"
             className="w-full px-3 py-2 pr-8 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-phoenix-500"
           />
           {searchQuery && (
@@ -91,24 +76,21 @@ export default function SitePanel({
         {searchQuery.trim() ? (
           <SearchResults
             results={searchResults}
-            sitesById={sitesById}
-            selectedGardienId={selectedGardienId}
-            onSelectGardien={onSelectGardien}
+            selectedAgentId={selectedAgentId}
+            onSelectAgent={onSelectAgent}
             hasSelectedSite={!!site}
           />
         ) : site ? (
           <SiteView
             site={site}
-            sitesById={sitesById}
-            assignedGardiens={assignedGardiens}
-            gardiensInRadius={gardiensInRadius}
-            gardiensAllSorted={gardiensAllSorted}
+            agentsInRadius={agentsInRadius}
+            agentsAllSorted={agentsAllSorted}
             viewMode={viewMode}
             onChangeViewMode={onChangeViewMode}
             radiusKm={radiusKm}
-            selectedGardienId={selectedGardienId}
+            selectedAgentId={selectedAgentId}
             onClearSite={onClearSite}
-            onSelectGardien={onSelectGardien}
+            onSelectAgent={onSelectAgent}
           />
         ) : (
           <SitesList allSites={allSites} onSelectSite={onSelectSite} />
@@ -128,7 +110,6 @@ function SitesList({
   const [filter, setFilter] = useState("");
   const [expandedClient, setExpandedClient] = useState<string | null>(null);
 
-  // Groupé par client
   const byClient = useMemo(() => {
     const map = new Map<string, Site[]>();
     allSites.forEach((s) => {
@@ -160,7 +141,7 @@ function SitesList({
         Sites Phoenix Sénégal ({allSites.length})
       </h2>
       <p className="text-sm text-slate-500 mb-3">
-        Cliquez sur un site pour voir les agents affectés et ceux dans un rayon.
+        Cliquez sur un site pour voir les agents dans un rayon de {3} km.
       </p>
 
       <div className="mb-3">
@@ -232,39 +213,27 @@ function SitesList({
 
 function SiteView({
   site,
-  sitesById,
-  assignedGardiens,
-  gardiensInRadius,
-  gardiensAllSorted,
+  agentsInRadius,
+  agentsAllSorted,
   viewMode,
   onChangeViewMode,
   radiusKm,
-  selectedGardienId,
+  selectedAgentId,
   onClearSite,
-  onSelectGardien,
+  onSelectAgent,
 }: {
   site: Site;
-  sitesById: Map<string, Site>;
-  assignedGardiens: GardienWithDistance[];
-  gardiensInRadius: GardienWithDistance[];
-  gardiensAllSorted: GardienWithDistance[];
+  agentsInRadius: AgentWithDistance[];
+  agentsAllSorted: AgentWithDistance[];
   viewMode: ViewMode;
   onChangeViewMode: (m: ViewMode) => void;
   radiusKm: number;
-  selectedGardienId: string | null;
+  selectedAgentId: string | null;
   onClearSite: () => void;
-  onSelectGardien: (id: string) => void;
+  onSelectAgent: (id: string) => void;
 }) {
-  const enService = gardiensInRadius.filter(
-    (g) => g.status === "en_service",
-  ).length;
-  const enPause = gardiensInRadius.filter(
-    (g) => g.status === "en_pause",
-  ).length;
-
-  const nearbyNotAssigned = gardiensInRadius.filter(
-    (g) => g.assignedSiteId !== site.id,
-  );
+  const cdi = agentsInRadius.filter((a) => a.contractType === "CDI").length;
+  const cdd = agentsInRadius.filter((a) => a.contractType === "CDD").length;
 
   return (
     <div>
@@ -293,15 +262,15 @@ function SiteView({
       </p>
       {site.approximate && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
-          ⚠ Position approximative (basée sur le nom). À affiner avec les
-          vraies coordonnées GPS.
+          ⚠ Position approximative (basée sur le nom du site). À affiner avec
+          les vraies coordonnées GPS.
         </p>
       )}
 
       <div className="grid grid-cols-3 gap-2 my-4">
-        <Stat label={`Dans ${radiusKm} km`} value={gardiensInRadius.length} />
-        <Stat label="En service" value={enService} accent="emerald" />
-        <Stat label="En pause" value={enPause} accent="amber" />
+        <Stat label={`Dans ${radiusKm} km`} value={agentsInRadius.length} />
+        <Stat label="CDI" value={cdi} accent="emerald" />
+        <Stat label="CDD" value={cdd} accent="blue" />
       </div>
 
       <div className="bg-slate-100 rounded-lg p-1 flex text-xs mb-4">
@@ -330,35 +299,20 @@ function SiteView({
       {viewMode === "radius" ? (
         <>
           <SectionHeader
-            title="Agents affectés à ce site"
-            count={assignedGardiens.length}
+            title="Agents proches de ce site"
+            count={agentsInRadius.length}
           />
-          {assignedGardiens.length === 0 ? (
-            <EmptyMsg text="Aucun agent affecté à ce site." />
+          <p className="text-xs text-slate-500 mb-2">
+            Agents Phoenix dont l&apos;adresse est dans un rayon de {radiusKm}{" "}
+            km autour de ce site.
+          </p>
+          {agentsInRadius.length === 0 ? (
+            <EmptyMsg text="Aucun agent dans le rayon." />
           ) : (
-            <GardienList
-              gardiens={assignedGardiens}
-              sitesById={sitesById}
-              selectedGardienId={selectedGardienId}
-              onSelectGardien={onSelectGardien}
-              showSiteLabel={false}
-            />
-          )}
-
-          <SectionHeader
-            title={`Autres agents dans ${radiusKm} km`}
-            count={nearbyNotAssigned.length}
-            className="mt-5"
-          />
-          {nearbyNotAssigned.length === 0 ? (
-            <EmptyMsg text="Aucun autre agent à proximité." />
-          ) : (
-            <GardienList
-              gardiens={nearbyNotAssigned}
-              sitesById={sitesById}
-              selectedGardienId={selectedGardienId}
-              onSelectGardien={onSelectGardien}
-              showSiteLabel={true}
+            <AgentList
+              agents={agentsInRadius}
+              selectedAgentId={selectedAgentId}
+              onSelectAgent={onSelectAgent}
             />
           )}
         </>
@@ -366,25 +320,16 @@ function SiteView({
         <>
           <SectionHeader
             title="Tous les agents par distance"
-            count={gardiensAllSorted.length}
+            count={agentsAllSorted.length}
           />
           <p className="text-xs text-slate-500 mb-2">
-            Trié du plus proche au plus éloigné. Agents affectés à ce site
-            surlignés.
+            Trié du plus proche au plus éloigné. Affichage des 200 premiers.
           </p>
-          <GardienList
-            gardiens={gardiensAllSorted.slice(0, 200)}
-            sitesById={sitesById}
-            selectedGardienId={selectedGardienId}
-            onSelectGardien={onSelectGardien}
-            showSiteLabel={true}
-            highlightAssignedTo={site.id}
+          <AgentList
+            agents={agentsAllSorted.slice(0, 200)}
+            selectedAgentId={selectedAgentId}
+            onSelectAgent={onSelectAgent}
           />
-          {gardiensAllSorted.length > 200 && (
-            <p className="text-xs text-slate-400 italic mt-2 text-center">
-              Affichage limité aux 200 plus proches.
-            </p>
-          )}
         </>
       )}
     </div>
@@ -393,15 +338,13 @@ function SiteView({
 
 function SearchResults({
   results,
-  sitesById,
-  selectedGardienId,
-  onSelectGardien,
+  selectedAgentId,
+  onSelectAgent,
   hasSelectedSite,
 }: {
-  results: GardienWithDistance[];
-  sitesById: Map<string, Site>;
-  selectedGardienId: string | null;
-  onSelectGardien: (id: string) => void;
+  results: AgentWithDistance[];
+  selectedAgentId: string | null;
+  onSelectAgent: (id: string) => void;
   hasSelectedSite: boolean;
 }) {
   return (
@@ -412,94 +355,68 @@ function SearchResults({
       <p className="text-sm text-slate-500 mb-3">
         {hasSelectedSite
           ? "Distance calculée par rapport au site sélectionné."
-          : "Sélectionnez un agent pour le voir sur la carte."}
+          : "Cliquez sur un agent pour le voir sur la carte."}
       </p>
       {results.length === 0 ? (
         <EmptyMsg text="Aucun agent ne correspond." />
       ) : (
-        <ul className="space-y-2">
-          {results.slice(0, 200).map((g) => {
-            const assignedSite = g.assignedSiteId
-              ? sitesById.get(g.assignedSiteId)
-              : null;
-            return (
-              <GardienCard
-                key={g.id}
-                g={g}
-                isSelected={selectedGardienId === g.id}
-                onClick={() => onSelectGardien(g.id)}
+        <>
+          <ul className="space-y-2">
+            {results.slice(0, 200).map((a) => (
+              <AgentCard
+                key={a.id}
+                a={a}
+                isSelected={selectedAgentId === a.id}
+                onClick={() => onSelectAgent(a.id)}
                 showDistance={hasSelectedSite}
-                siteLabel={assignedSite?.name}
               />
-            );
-          })}
+            ))}
+          </ul>
           {results.length > 200 && (
-            <li className="text-xs text-slate-400 italic text-center pt-2">
+            <p className="text-xs text-slate-400 italic text-center pt-2">
               Affichage limité aux 200 premiers. Affinez la recherche.
-            </li>
+            </p>
           )}
-        </ul>
+        </>
       )}
     </div>
   );
 }
 
-function GardienList({
-  gardiens,
-  sitesById,
-  selectedGardienId,
-  onSelectGardien,
-  showSiteLabel,
-  highlightAssignedTo,
+function AgentList({
+  agents,
+  selectedAgentId,
+  onSelectAgent,
 }: {
-  gardiens: GardienWithDistance[];
-  sitesById: Map<string, Site>;
-  selectedGardienId: string | null;
-  onSelectGardien: (id: string) => void;
-  showSiteLabel: boolean;
-  highlightAssignedTo?: string;
+  agents: AgentWithDistance[];
+  selectedAgentId: string | null;
+  onSelectAgent: (id: string) => void;
 }) {
   return (
     <ul className="space-y-2">
-      {gardiens.map((g) => {
-        const siteName =
-          showSiteLabel && g.assignedSiteId
-            ? sitesById.get(g.assignedSiteId)?.name
-            : undefined;
-        return (
-          <GardienCard
-            key={g.id}
-            g={g}
-            isSelected={selectedGardienId === g.id}
-            onClick={() => onSelectGardien(g.id)}
-            showDistance
-            siteLabel={siteName}
-            isAssignedToHighlighted={
-              highlightAssignedTo
-                ? g.assignedSiteId === highlightAssignedTo
-                : false
-            }
-          />
-        );
-      })}
+      {agents.map((a) => (
+        <AgentCard
+          key={a.id}
+          a={a}
+          isSelected={selectedAgentId === a.id}
+          onClick={() => onSelectAgent(a.id)}
+          showDistance
+        />
+      ))}
     </ul>
   );
 }
 
-function GardienCard({
-  g,
+function AgentCard({
+  a,
   isSelected,
   onClick,
   showDistance,
-  siteLabel,
-  isAssignedToHighlighted,
 }: {
-  g: GardienWithDistance;
+  a: AgentWithDistance;
   isSelected: boolean;
   onClick: () => void;
   showDistance: boolean;
-  siteLabel?: string;
-  isAssignedToHighlighted?: boolean;
 }) {
   return (
     <li>
@@ -508,36 +425,37 @@ function GardienCard({
         className={`w-full text-left p-3 rounded-lg border transition ${
           isSelected
             ? "border-phoenix-500 bg-phoenix-50 ring-2 ring-phoenix-200"
-            : isAssignedToHighlighted
-              ? "border-phoenix-200 bg-phoenix-50/50"
-              : "border-slate-200 hover:bg-slate-50"
+            : "border-slate-200 hover:bg-slate-50"
         }`}
       >
         <div className="flex items-center justify-between gap-2">
-          <span className="font-medium text-sm">{g.fullName}</span>
+          <span className="font-medium text-sm truncate">{a.fullName}</span>
           <span
-            className={`text-[10px] px-2 py-0.5 rounded-full ${GARDIEN_BADGE[g.status]}`}
+            className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${CONTRACT_BADGE[a.contractType]}`}
           >
-            {GARDIEN_LABEL[g.status]}
+            {a.contractType}
           </span>
         </div>
-        <div className="text-xs text-slate-500 mt-1 flex items-center justify-between gap-2">
+        <div className="text-xs text-slate-500 mt-0.5 flex items-center justify-between gap-2">
           <span className="truncate">
-            {g.phone} · Shift {g.shift}
-            {siteLabel && (
-              <span
-                className={`ml-1 ${isAssignedToHighlighted ? "text-phoenix-600 font-medium" : ""}`}
-              >
-                · {siteLabel}
-              </span>
-            )}
+            Mat. {a.matricule || "—"}
           </span>
           {showDistance && (
             <span className="font-semibold text-slate-700 shrink-0">
-              {g.distanceKm.toFixed(2)} km
+              {a.distanceKm.toFixed(2)} km
             </span>
           )}
         </div>
+        {a.address && (
+          <div className="text-xs text-slate-400 mt-1 truncate flex items-center gap-1">
+            {a.approximate && (
+              <span className="text-amber-500" title="Position approximative">
+                ⚠
+              </span>
+            )}
+            📍 {a.address}
+          </div>
+        )}
       </button>
     </li>
   );
@@ -573,14 +491,16 @@ function Stat({
 }: {
   label: string;
   value: number;
-  accent?: "emerald" | "amber";
+  accent?: "emerald" | "amber" | "blue";
 }) {
   const color =
     accent === "emerald"
       ? "text-emerald-700 bg-emerald-50"
       : accent === "amber"
         ? "text-amber-700 bg-amber-50"
-        : "text-slate-700 bg-slate-50";
+        : accent === "blue"
+          ? "text-blue-700 bg-blue-50"
+          : "text-slate-700 bg-slate-50";
   return (
     <div className={`rounded-lg p-2 text-center ${color}`}>
       <div className="text-xl font-bold leading-none">{value}</div>

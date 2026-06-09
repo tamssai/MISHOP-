@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE } from "@/lib/auth";
 import { logout } from "@/app/login/actions";
 import DashboardClient from "@/components/DashboardClient";
-import { sites, generateGardiens } from "@/lib/data";
+import { sites, agents } from "@/lib/data";
 
 export default function DashboardPage() {
   const session = cookies().get(SESSION_COOKIE);
@@ -11,7 +11,6 @@ export default function DashboardPage() {
     redirect("/login");
   }
   const userEmail = decodeURIComponent(session.value);
-  const gardiens = generateGardiens();
 
   return (
     <div className="flex flex-col h-screen">
@@ -21,9 +20,11 @@ export default function DashboardPage() {
             P
           </div>
           <div>
-            <h1 className="font-bold leading-tight">Phoenix Sénégal — Portail RH</h1>
+            <h1 className="font-bold leading-tight">
+              Phoenix Sénégal — Portail RH
+            </h1>
             <p className="text-xs text-slate-300 leading-tight">
-              Suivi temps réel des sites & gardiens
+              {sites.length} sites · {agents.length} agents
             </p>
           </div>
         </div>
@@ -41,7 +42,7 @@ export default function DashboardPage() {
       </header>
 
       <main className="flex-1 overflow-hidden">
-        <DashboardClient sites={sites} initialGardiens={gardiens} />
+        <DashboardClient sites={sites} agents={agents} />
       </main>
     </div>
   );

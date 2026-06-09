@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -13,7 +13,7 @@ import L from "leaflet";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import type { Site, Gardien } from "@/lib/data";
+import type { Site, Agent } from "@/lib/data";
 
 const SITE_COLORS: Record<Site["status"], string> = {
   actif: "#10b981",
@@ -21,10 +21,9 @@ const SITE_COLORS: Record<Site["status"], string> = {
   inactif: "#94a3b8",
 };
 
-const GARDIEN_COLORS: Record<Gardien["status"], string> = {
-  en_service: "#2563eb",
-  en_pause: "#f59e0b",
-  hors_service: "#94a3b8",
+const CONTRACT_COLORS: Record<Agent["contractType"], string> = {
+  CDI: "#10b981",
+  CDD: "#2563eb",
 };
 
 function siteIcon(site: Site, isSelected: boolean) {
@@ -40,18 +39,17 @@ function siteIcon(site: Site, isSelected: boolean) {
   });
 }
 
-function gardienIcon(g: Gardien, isHighlighted: boolean) {
+function agentIcon(a: Agent, isHighlighted: boolean) {
   const size = isHighlighted ? 20 : 12;
   const border = isHighlighted ? "3px solid #ff4214" : "2px solid white";
   return L.divIcon({
     className: "",
-    html: `<div class="gardien-marker" style="background:${GARDIEN_COLORS[g.status]};width:${size}px;height:${size}px;border:${border}"></div>`,
+    html: `<div class="gardien-marker" style="background:${CONTRACT_COLORS[a.contractType]};width:${size}px;height:${size}px;border:${border}"></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
 }
 
-// Cluster icon stylé Phoenix
 function createClusterCustomIcon(cluster: L.MarkerCluster) {
   const count = cluster.getChildCount();
   let size = 36;
@@ -94,7 +92,6 @@ function FlyTo({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
   return null;
 }
 
-// Cluster layer pour les sites
 function SitesClusterLayer({
   sites,
   selectedSiteId,
@@ -137,10 +134,11 @@ function SitesClusterLayer({
         </div>`,
       );
       marker.on("popupopen", (e) => {
-        const popup = e.popup;
-        const el = popup.getElement();
+        const el = e.popup.getElement();
         if (el) {
-          const btn = el.querySelector<HTMLButtonElement>("button[data-site-id]");
+          const btn = el.querySelector<HTMLButtonElement>(
+            "button[data-site-id]",
+          );
           if (btn) {
             btn.onclick = () => {
               onSelectSite(site.id);
@@ -168,24 +166,24 @@ function SitesClusterLayer({
 
 export default function MapView({
   sites,
-  gardiens,
+  agents,
   selectedSite,
-  selectedGardien,
+  selectedAgent,
   radiusKm,
   onSelectSite,
-  onSelectGardien,
+  onSelectAgent,
 }: {
   sites: Site[];
-  gardiens: Gardien[];
+  agents: Agent[];
   selectedSite: Site | null;
-  selectedGardien: Gardien | null;
+  selectedAgent: Agent | null;
   radiusKm: number;
   onSelectSite: (id: string) => void;
-  onSelectGardien: (id: string) => void;
+  onSelectAgent: (id: string) => void;
 }) {
   return (
     <MapContainer
-      center={[14.4974, -14.4524]} // centre du Sénégal
+      center={[14.4974, -14.4524]}
       zoom={7}
       minZoom={6}
       maxZoom={18}
@@ -193,7 +191,6 @@ export default function MapView({
       className="h-full w-full"
       worldCopyJump={false}
     >
-      {/* Fond CartoDB Voyager - net, rapide, gratuit */}
       <TileLayer
         attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -205,7 +202,7 @@ export default function MapView({
 
       {selectedSite && (
         <>
-          <FlyTo lat={selectedSite.lat} lng={selectedSite.lng} zoom={14} />
+          <FlyTo lat={selectedSite.lat} lng={selectedSite.lng} zoom={13} />
           <Circle
             center={[selectedSite.lat, selectedSite.lng]}
             radius={radiusKm * 1000}
@@ -220,12 +217,8 @@ export default function MapView({
         </>
       )}
 
-      {selectedGardien && !selectedSite && (
-        <FlyTo
-          lat={selectedGardien.lat}
-          lng={selectedGardien.lng}
-          zoom={14}
-        />
+      {selectedAgent && !selectedSite && (
+        <FlyTo lat={selectedAgent.lat} lng={selectedAgent.lng} zoom={14} />
       )}
 
       <SitesClusterLayer
@@ -234,25 +227,26 @@ export default function MapView({
         onSelectSite={onSelectSite}
       />
 
-      {/* Marqueurs gardiens (rendus seulement quand un site est sélectionné ou recherche) */}
-      {gardiens.map((g) => {
-        const isHighlighted = selectedGardien?.id === g.id;
+      {agents.map((a) => {
+        const isHighlighted = selectedAgent?.id === a.id;
         return (
           <Marker
-            key={g.id}
-            position={[g.lat, g.lng]}
-            icon={gardienIcon(g, isHighlighted)}
-            eventHandlers={{ click: () => onSelectGardien(g.id) }}
+            key={a.id}
+            position={[a.lat, a.lng]}
+            icon={agentIcon(a, isHighlighted)}
+            eventHandlers={{ click: () => onSelectAgent(a.id) }}
           >
             <Popup>
               <div className="text-sm">
-                <strong>{g.fullName}</strong>
+                <strong>{a.fullName}</strong>
                 <br />
-                {g.phone}
-                <br />
-                <span className="text-slate-500">
-                  {g.shift} · {g.status.replace("_", " ")}
-                </span>
+                Mat. {a.matricule || "—"} · {a.contractType}
+                {a.address && (
+                  <>
+                    <br />
+                    <span className="text-slate-500">📍 {a.address}</span>
+                  </>
+                )}
               </div>
             </Popup>
           </Marker>

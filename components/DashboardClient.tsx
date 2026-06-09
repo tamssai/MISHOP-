@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import type { Site, Gardien } from "@/lib/data";
+import type { Site, Agent } from "@/lib/data";
 import { haversineKm } from "@/lib/geo";
 import SitePanel from "./SitePanel";
 
@@ -17,21 +17,18 @@ const MapView = dynamic(() => import("./MapView"), {
 
 export const RADIUS_KM = 3;
 
-export type GardienWithDistance = Gardien & { distanceKm: number };
+export type AgentWithDistance = Agent & { distanceKm: number };
 export type ViewMode = "radius" | "all";
 
 export default function DashboardClient({
   sites,
-  initialGardiens,
+  agents,
 }: {
   sites: Site[];
-  initialGardiens: Gardien[];
+  agents: Agent[];
 }) {
-  const [gardiens] = useState<Gardien[]>(initialGardiens);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
-  const [selectedGardienId, setSelectedGardienId] = useState<string | null>(
-    null,
-  );
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("radius");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -40,58 +37,54 @@ export default function DashboardClient({
     [sites, selectedSiteId],
   );
 
-  const gardiensWithDistance: GardienWithDistance[] = useMemo(() => {
+  const agentsWithDistance: AgentWithDistance[] = useMemo(() => {
     if (!selectedSite) {
-      return gardiens.map((g) => ({ ...g, distanceKm: 0 }));
+      return agents.map((a) => ({ ...a, distanceKm: 0 }));
     }
-    return gardiens.map((g) => ({
-      ...g,
+    return agents.map((a) => ({
+      ...a,
       distanceKm: haversineKm(
         { lat: selectedSite.lat, lng: selectedSite.lng },
-        { lat: g.lat, lng: g.lng },
+        { lat: a.lat, lng: a.lng },
       ),
     }));
-  }, [gardiens, selectedSite]);
+  }, [agents, selectedSite]);
 
-  const assignedGardiens = useMemo(() => {
+  const agentsInRadius = useMemo(() => {
     if (!selectedSite) return [];
-    return gardiensWithDistance
-      .filter((g) => g.assignedSiteId === selectedSite.id)
+    return agentsWithDistance
+      .filter((a) => a.distanceKm <= RADIUS_KM)
       .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [gardiensWithDistance, selectedSite]);
+  }, [agentsWithDistance, selectedSite]);
 
-  const gardiensInRadius = useMemo(() => {
+  const agentsAllSorted = useMemo(() => {
     if (!selectedSite) return [];
-    return gardiensWithDistance
-      .filter((g) => g.distanceKm <= RADIUS_KM)
-      .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [gardiensWithDistance, selectedSite]);
-
-  const gardiensAllSorted = useMemo(() => {
-    if (!selectedSite) return [];
-    return [...gardiensWithDistance].sort(
+    return [...agentsWithDistance].sort(
       (a, b) => a.distanceKm - b.distanceKm,
     );
-  }, [gardiensWithDistance, selectedSite]);
+  }, [agentsWithDistance, selectedSite]);
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
-    return gardiensWithDistance.filter((g) =>
-      g.fullName.toLowerCase().includes(q),
+    return agentsWithDistance.filter(
+      (a) =>
+        a.fullName.toLowerCase().includes(q) ||
+        a.matricule.toLowerCase().includes(q),
     );
-  }, [gardiensWithDistance, searchQuery]);
+  }, [agentsWithDistance, searchQuery]);
 
-  const selectedGardien =
-    gardiens.find((g) => g.id === selectedGardienId) ?? null;
+  const selectedAgent =
+    agents.find((a) => a.id === selectedAgentId) ?? null;
 
-  // Quoi afficher comme marqueurs gardiens sur la carte
-  const gardiensOnMap = useMemo(() => {
+  const agentsOnMap = useMemo(() => {
     if (searchQuery.trim() && searchResults.length > 0) {
-      return searchResults;
+      return searchResults.slice(0, 200);
     }
     if (selectedSite) {
-      return viewMode === "all" ? gardiensAllSorted : gardiensInRadius;
+      return viewMode === "all"
+        ? agentsAllSorted.slice(0, 200)
+        : agentsInRadius;
     }
     return [];
   }, [
@@ -99,24 +92,20 @@ export default function DashboardClient({
     searchResults,
     selectedSite,
     viewMode,
-    gardiensAllSorted,
-    gardiensInRadius,
+    agentsAllSorted,
+    agentsInRadius,
   ]);
 
   const handleSelectSite = (id: string) => {
     setSelectedSiteId(id);
-    setSelectedGardienId(null);
+    setSelectedAgentId(null);
     setViewMode("radius");
   };
 
   const handleClearSite = () => {
     setSelectedSiteId(null);
-    setSelectedGardienId(null);
+    setSelectedAgentId(null);
     setViewMode("radius");
-  };
-
-  const handleSelectGardien = (id: string) => {
-    setSelectedGardienId(id);
   };
 
   return (
@@ -124,20 +113,22 @@ export default function DashboardClient({
       <div className="flex-1 relative">
         <MapView
           sites={sites}
-          gardiens={gardiensOnMap}
+          agents={agentsOnMap}
           selectedSite={selectedSite}
-          selectedGardien={selectedGardien}
+          selectedAgent={selectedAgent}
           radiusKm={RADIUS_KM}
           onSelectSite={handleSelectSite}
-          onSelectGardien={handleSelectGardien}
+          onSelectAgent={setSelectedAgentId}
         />
-        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur rounded-lg shadow-md px-3 py-2 text-xs z-[500]">
+        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur rounded-lg shadow-md px-3 py-2 text-xs z-[500] max-w-xs">
           <div className="font-medium text-slate-800">
-            {sites.length} sites · {gardiens.length} gardiens
+            {sites.length} sites · {agents.length} agents (
+            {agents.filter((a) => a.contractType === "CDI").length} CDI /{" "}
+            {agents.filter((a) => a.contractType === "CDD").length} CDD)
           </div>
           {selectedSite && (
-            <div className="text-slate-500 mt-0.5">
-              Site sélectionné : {selectedSite.name}
+            <div className="text-slate-500 mt-0.5 truncate">
+              📍 {selectedSite.client} – {selectedSite.lieu}
             </div>
           )}
         </div>
@@ -147,19 +138,18 @@ export default function DashboardClient({
         <SitePanel
           allSites={sites}
           site={selectedSite}
-          assignedGardiens={assignedGardiens}
-          gardiensInRadius={gardiensInRadius}
-          gardiensAllSorted={gardiensAllSorted}
+          agentsInRadius={agentsInRadius}
+          agentsAllSorted={agentsAllSorted}
           viewMode={viewMode}
           onChangeViewMode={setViewMode}
           radiusKm={RADIUS_KM}
           searchQuery={searchQuery}
           onChangeSearch={setSearchQuery}
           searchResults={searchResults}
-          selectedGardienId={selectedGardienId}
+          selectedAgentId={selectedAgentId}
           onSelectSite={handleSelectSite}
           onClearSite={handleClearSite}
-          onSelectGardien={handleSelectGardien}
+          onSelectAgent={setSelectedAgentId}
         />
       </aside>
     </div>
