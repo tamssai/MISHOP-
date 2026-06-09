@@ -12,9 +12,9 @@ export default function LoginPage({
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         <div className="flex flex-col items-center mb-6">
           <img
-            src="/phoenix-logo.svg"
+            src="/phoenix-logo.png"
             alt="Phoenix Sénégal — securite intelligente"
-            className="w-56 h-auto mb-3"
+            className="w-64 h-auto mb-3"
           />
           <p className="text-xs text-slate-400 mt-2">Portail Ressources Humaines</p>
         </div>

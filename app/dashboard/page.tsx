@@ -17,9 +17,9 @@ export default function DashboardPage() {
       <header className="bg-slate-900 text-white px-6 py-3 flex items-center justify-between shadow-lg z-[1000]">
         <div className="flex items-center gap-3">
           <img
-            src="/phoenix-mark.svg"
+            src="/phoenix-mark.png"
             alt="Phoenix"
-            className="h-9 w-auto"
+            className="h-10 w-auto"
           />
           <div>
             <h1 className="font-bold leading-tight">

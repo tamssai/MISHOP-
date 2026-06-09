@@ -5,8 +5,8 @@ export const metadata: Metadata = {
   title: "Phoenix Sénégal — Portail RH",
   description: "Portail RH Phoenix - Cartographie des sites et agents",
   icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/icon.png",
+    apple: "/icon.png",
   },
 };
 
