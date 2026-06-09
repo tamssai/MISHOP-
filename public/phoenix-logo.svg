@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 220" fill="none" font-family="Georgia, 'Times New Roman', serif">
+  <!-- Eye shape (forme oeil/amande) -->
+  <path d="M 30 110 Q 250 -10 470 110 Q 250 230 30 110 Z" fill="#000000"/>
+
+  <!-- Anneau blanc -->
+  <circle cx="250" cy="110" r="52" fill="#ffffff"/>
+
+  <!-- Centre rouge -->
+  <circle cx="250" cy="110" r="36" fill="#e02424"/>
+
+  <!-- PH (à gauche du O rouge) -->
+  <text x="200" y="130" text-anchor="end" font-size="62" font-weight="700" fill="#ffffff" letter-spacing="3">PH</text>
+
+  <!-- ENIX (à droite du O rouge) -->
+  <text x="300" y="130" text-anchor="start" font-size="62" font-weight="700" fill="#ffffff" letter-spacing="3">ENIX</text>
+
+  <!-- SENEGAL (sous PHOENIX) -->
+  <text x="250" y="170" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="400" fill="#ffffff" letter-spacing="8">SENEGAL</text>
+</svg>

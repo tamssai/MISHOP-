@@ -16,9 +16,11 @@ export default function DashboardPage() {
     <div className="flex flex-col h-screen">
       <header className="bg-slate-900 text-white px-6 py-3 flex items-center justify-between shadow-lg z-[1000]">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-phoenix-500 flex items-center justify-center font-bold">
-            P
-          </div>
+          <img
+            src="/phoenix-mark.svg"
+            alt="Phoenix"
+            className="h-9 w-auto"
+          />
           <div>
             <h1 className="font-bold leading-tight">
               Phoenix Sénégal — Portail RH

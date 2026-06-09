@@ -11,11 +11,15 @@ export default function LoginPage({
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-phoenix-900 to-phoenix-700 px-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-phoenix-500 flex items-center justify-center text-white text-3xl font-bold mb-3">
-            P
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">Phoenix Sénégal</h1>
-          <p className="text-sm text-slate-500 mt-1">Portail Ressources Humaines</p>
+          <img
+            src="/phoenix-logo.svg"
+            alt="Phoenix Sénégal"
+            className="w-48 h-auto mb-3"
+          />
+          <p className="text-sm text-slate-500 mt-1 italic tracking-wide">
+            securite intelligente
+          </p>
+          <p className="text-xs text-slate-400 mt-2">Portail Ressources Humaines</p>
         </div>
 
         <form action={login} className="space-y-4">
