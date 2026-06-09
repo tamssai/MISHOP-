@@ -32,7 +32,7 @@ export default function LoginPage({
               type="email"
               required
               autoComplete="email"
-              defaultValue="rh@phoenix.sn"
+              placeholder="vous@phoenix.sn"
               className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-phoenix-500"
             />
           </div>
@@ -62,12 +62,6 @@ export default function LoginPage({
             Se connecter
           </button>
         </form>
-
-        <div className="mt-6 text-xs text-slate-400 border-t border-slate-100 pt-4">
-          <p className="font-semibold text-slate-500 mb-1">Comptes de démo :</p>
-          <p>rh@phoenix.sn / phoenix2026</p>
-          <p>admin@phoenix.sn / admin2026</p>
-        </div>
       </div>
     </div>
   );
