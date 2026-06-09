@@ -1,4 +1,4 @@
-# Phoenix Portal RH
+# Phoenix Portal RH 🚀
 
 Portail web interne pour le service RH de **Phoenix Sénégal** : suivi temps réel des sites et des gardiens (agents de sécurité) sur une carte.
 
