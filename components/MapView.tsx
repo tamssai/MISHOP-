@@ -24,24 +24,37 @@ const GARDIEN_COLORS: Record<Gardien["status"], string> = {
   hors_service: "#94a3b8",
 };
 
-function siteIcon(site: Site) {
+function siteIcon(site: Site, isSelected: boolean) {
+  const border = isSelected ? "4px solid #ff4214" : "3px solid white";
   return L.divIcon({
     className: "",
     html: `<div class="site-marker ${
       site.status === "alerte" ? "pulse" : ""
-    }" style="background:${SITE_COLORS[site.status]}">🏢</div>`,
+    }" style="background:${SITE_COLORS[site.status]};border:${border}">🏢</div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
   });
 }
 
-function gardienIcon(g: Gardien) {
+function gardienIcon(g: Gardien, isHighlighted: boolean) {
+  const size = isHighlighted ? 22 : 14;
+  const border = isHighlighted ? "3px solid #ff4214" : "2px solid white";
   return L.divIcon({
     className: "",
-    html: `<div class="gardien-marker" style="background:${GARDIEN_COLORS[g.status]}"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
+    html: `<div class="gardien-marker" style="background:${GARDIEN_COLORS[g.status]};width:${size}px;height:${size}px;border:${border}"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
   });
+}
+
+function FitSenegal({ sites }: { sites: Site[] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (sites.length === 0) return;
+    const bounds = L.latLngBounds(sites.map((s) => [s.lat, s.lng]));
+    map.fitBounds(bounds, { padding: [40, 40] });
+  }, [map, sites]);
+  return null;
 }
 
 function FlyTo({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
@@ -56,19 +69,24 @@ export default function MapView({
   sites,
   gardiens,
   selectedSite,
+  selectedGardien,
   radiusKm,
   onSelectSite,
+  onSelectGardien,
 }: {
   sites: Site[];
   gardiens: Gardien[];
   selectedSite: Site | null;
+  selectedGardien: Gardien | null;
   radiusKm: number;
   onSelectSite: (id: string) => void;
+  onSelectGardien: (id: string) => void;
 }) {
   return (
     <MapContainer
-      center={[14.7167, -17.4677]}
-      zoom={11}
+      // Centre approximatif du Sénégal
+      center={[14.4974, -14.4524]}
+      zoom={7}
       scrollWheelZoom
       className="h-full w-full"
     >
@@ -77,9 +95,11 @@ export default function MapView({
         url="https://{s}.tile.openstreetmap.org/{z}/{y}/{x}.png"
       />
 
+      {!selectedSite && !selectedGardien && <FitSenegal sites={sites} />}
+
       {selectedSite && (
         <>
-          <FlyTo lat={selectedSite.lat} lng={selectedSite.lng} zoom={14} />
+          <FlyTo lat={selectedSite.lat} lng={selectedSite.lng} zoom={13} />
           <Circle
             center={[selectedSite.lat, selectedSite.lng]}
             radius={radiusKm * 1000}
@@ -94,11 +114,19 @@ export default function MapView({
         </>
       )}
 
+      {selectedGardien && !selectedSite && (
+        <FlyTo
+          lat={selectedGardien.lat}
+          lng={selectedGardien.lng}
+          zoom={14}
+        />
+      )}
+
       {sites.map((site) => (
         <Marker
           key={site.id}
           position={[site.lat, site.lng]}
-          icon={siteIcon(site)}
+          icon={siteIcon(site, selectedSite?.id === site.id)}
           eventHandlers={{ click: () => onSelectSite(site.id) }}
         >
           <Popup>
@@ -107,18 +135,22 @@ export default function MapView({
               <br />
               {site.address}, {site.city}
               <br />
-              <span className="text-slate-500">Statut : {site.status}</span>
+              <span className="text-slate-500">
+                Région : {site.region} · {site.status}
+              </span>
             </div>
           </Popup>
         </Marker>
       ))}
 
-      {selectedSite &&
-        gardiens.map((g) => (
+      {gardiens.map((g) => {
+        const isHighlighted = selectedGardien?.id === g.id;
+        return (
           <Marker
             key={g.id}
             position={[g.lat, g.lng]}
-            icon={gardienIcon(g)}
+            icon={gardienIcon(g, isHighlighted)}
+            eventHandlers={{ click: () => onSelectGardien(g.id) }}
           >
             <Popup>
               <div className="text-sm">
@@ -132,7 +164,8 @@ export default function MapView({
               </div>
             </Popup>
           </Marker>
-        ))}
+        );
+      })}
     </MapContainer>
   );
 }

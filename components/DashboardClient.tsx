@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Site, Gardien } from "@/lib/data";
 import { haversineKm } from "@/lib/geo";
-import SiteDetails from "./SiteDetails";
+import SitePanel from "./SitePanel";
 
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
@@ -17,6 +17,9 @@ const MapView = dynamic(() => import("./MapView"), {
 
 export const RADIUS_KM = 3;
 
+export type GardienWithDistance = Gardien & { distanceKm: number };
+export type ViewMode = "radius" | "all";
+
 export default function DashboardClient({
   sites,
   initialGardiens,
@@ -24,80 +27,139 @@ export default function DashboardClient({
   sites: Site[];
   initialGardiens: Gardien[];
 }) {
-  const [gardiens, setGardiens] = useState<Gardien[]>(initialGardiens);
+  const [gardiens] = useState<Gardien[]>(initialGardiens);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
-
-  // Simulation temps réel: léger déplacement des gardiens en service toutes les 3s
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setGardiens((prev) =>
-        prev.map((g) => {
-          if (g.status !== "en_service") return g;
-          const jitter = 0.0003; // ~30 m
-          return {
-            ...g,
-            lat: g.lat + (Math.random() - 0.5) * jitter,
-            lng: g.lng + (Math.random() - 0.5) * jitter,
-          };
-        }),
-      );
-      setLastUpdate(new Date());
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  const [selectedGardienId, setSelectedGardienId] = useState<string | null>(
+    null,
+  );
+  const [viewMode, setViewMode] = useState<ViewMode>("radius");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const selectedSite = useMemo(
     () => sites.find((s) => s.id === selectedSiteId) ?? null,
     [sites, selectedSiteId],
   );
 
+  const gardiensWithDistance: GardienWithDistance[] = useMemo(() => {
+    if (!selectedSite) {
+      return gardiens.map((g) => ({ ...g, distanceKm: 0 }));
+    }
+    return gardiens.map((g) => ({
+      ...g,
+      distanceKm: haversineKm(
+        { lat: selectedSite.lat, lng: selectedSite.lng },
+        { lat: g.lat, lng: g.lng },
+      ),
+    }));
+  }, [gardiens, selectedSite]);
+
+  const assignedGardiens = useMemo(() => {
+    if (!selectedSite) return [];
+    return gardiensWithDistance
+      .filter((g) => g.assignedSiteId === selectedSite.id)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+  }, [gardiensWithDistance, selectedSite]);
+
   const gardiensInRadius = useMemo(() => {
     if (!selectedSite) return [];
-    return gardiens
-      .map((g) => ({
-        ...g,
-        distanceKm: haversineKm(
-          { lat: selectedSite.lat, lng: selectedSite.lng },
-          { lat: g.lat, lng: g.lng },
-        ),
-      }))
+    return gardiensWithDistance
       .filter((g) => g.distanceKm <= RADIUS_KM)
       .sort((a, b) => a.distanceKm - b.distanceKm);
-  }, [gardiens, selectedSite]);
+  }, [gardiensWithDistance, selectedSite]);
+
+  const gardiensAllSorted = useMemo(() => {
+    if (!selectedSite) return [];
+    return [...gardiensWithDistance].sort(
+      (a, b) => a.distanceKm - b.distanceKm,
+    );
+  }, [gardiensWithDistance, selectedSite]);
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return gardiensWithDistance.filter((g) =>
+      g.fullName.toLowerCase().includes(q),
+    );
+  }, [gardiensWithDistance, searchQuery]);
+
+  const selectedGardien =
+    gardiens.find((g) => g.id === selectedGardienId) ?? null;
+
+  // Quoi afficher comme marqueurs gardiens sur la carte
+  const gardiensOnMap = useMemo(() => {
+    if (searchQuery.trim() && searchResults.length > 0) {
+      return searchResults;
+    }
+    if (selectedSite) {
+      return viewMode === "all" ? gardiensAllSorted : gardiensInRadius;
+    }
+    return [];
+  }, [
+    searchQuery,
+    searchResults,
+    selectedSite,
+    viewMode,
+    gardiensAllSorted,
+    gardiensInRadius,
+  ]);
+
+  const handleSelectSite = (id: string) => {
+    setSelectedSiteId(id);
+    setSelectedGardienId(null);
+    setViewMode("radius");
+  };
+
+  const handleClearSite = () => {
+    setSelectedSiteId(null);
+    setSelectedGardienId(null);
+    setViewMode("radius");
+  };
+
+  const handleSelectGardien = (id: string) => {
+    setSelectedGardienId(id);
+  };
 
   return (
     <div className="flex h-full">
       <div className="flex-1 relative">
         <MapView
           sites={sites}
-          gardiens={gardiens}
+          gardiens={gardiensOnMap}
           selectedSite={selectedSite}
+          selectedGardien={selectedGardien}
           radiusKm={RADIUS_KM}
-          onSelectSite={(id) => setSelectedSiteId(id)}
+          onSelectSite={handleSelectSite}
+          onSelectGardien={handleSelectGardien}
         />
         <div className="absolute top-3 left-3 bg-white/95 backdrop-blur rounded-lg shadow-md px-3 py-2 text-xs z-[500]">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 pulse" />
-            <span className="font-medium">Temps réel</span>
-            <span className="text-slate-500">
-              · MAJ {lastUpdate.toLocaleTimeString("fr-FR")}
-            </span>
-          </div>
-          <div className="text-slate-500 mt-1">
+          <div className="font-medium text-slate-800">
             {sites.length} sites · {gardiens.length} gardiens
           </div>
+          {selectedSite && (
+            <div className="text-slate-500 mt-0.5">
+              Site sélectionné : {selectedSite.name}
+            </div>
+          )}
         </div>
       </div>
 
-      <aside className="w-[380px] border-l border-slate-200 bg-white overflow-y-auto shadow-xl">
-        <SiteDetails
-          site={selectedSite}
-          gardiens={gardiensInRadius}
-          radiusKm={RADIUS_KM}
+      <aside className="w-[400px] border-l border-slate-200 bg-white overflow-y-auto shadow-xl">
+        <SitePanel
           allSites={sites}
-          onSelectSite={(id) => setSelectedSiteId(id)}
-          onClose={() => setSelectedSiteId(null)}
+          site={selectedSite}
+          assignedGardiens={assignedGardiens}
+          gardiensInRadius={gardiensInRadius}
+          gardiensAllSorted={gardiensAllSorted}
+          viewMode={viewMode}
+          onChangeViewMode={setViewMode}
+          radiusKm={RADIUS_KM}
+          searchQuery={searchQuery}
+          onChangeSearch={setSearchQuery}
+          searchResults={searchResults}
+          selectedGardienId={selectedGardienId}
+          onSelectSite={handleSelectSite}
+          onClearSite={handleClearSite}
+          onSelectGardien={handleSelectGardien}
         />
       </aside>
     </div>
