@@ -135,7 +135,7 @@ export async function loadCustomSites(): Promise<Site[]> {
     console.warn("Supabase load sites error:", error.message);
     return lsRead<Site>(SITES_KEY);
   }
-  return (data ?? []).map((r) => rowToSite(r as SiteRow));
+  return (data ?? []).map((r: SiteRow) => rowToSite(r));
 }
 
 export async function loadCustomAgents(): Promise<Agent[]> {
@@ -151,7 +151,7 @@ export async function loadCustomAgents(): Promise<Agent[]> {
     console.warn("Supabase load agents error:", error.message);
     return lsRead<Agent>(AGENTS_KEY);
   }
-  return (data ?? []).map((r) => rowToAgent(r as AgentRow));
+  return (data ?? []).map((r: AgentRow) => rowToAgent(r));
 }
 
 export async function saveCustomSite(site: Site): Promise<boolean> {
