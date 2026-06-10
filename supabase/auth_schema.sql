@@ -86,7 +86,7 @@ BEGIN
     NEW.id,
     LOWER(NEW.email),
     CASE
-      WHEN LOWER(NEW.email) = 'tamsir@mikaty.com' THEN 'admin'
+      WHEN LOWER(NEW.email) = 'contact.tamsir@gmail.com' THEN 'admin'
       WHEN is_first THEN 'admin'
       ELSE 'rh'
     END
@@ -158,5 +158,5 @@ CREATE POLICY "auth deletes custom_agents" ON public.custom_agents
 -- 8. Email admin initial (à modifier si besoin)
 -- ============================================================
 INSERT INTO public.authorized_emails (email, added_by, notes)
-VALUES ('tamsir@mikaty.com', 'system', 'Admin initial')
+VALUES ('contact.tamsir@gmail.com', 'system', 'Admin initial')
 ON CONFLICT (email) DO NOTHING;
