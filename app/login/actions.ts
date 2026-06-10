@@ -52,9 +52,16 @@ export async function sendCode(
   }
 
   // Envoie le code OTP par email
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true },
+    options: {
+      shouldCreateUser: true,
+      ...(baseUrl && { emailRedirectTo: `${baseUrl}/auth/callback` }),
+    },
   });
 
   if (error) {
@@ -68,7 +75,7 @@ export async function sendCode(
   return {
     step: "code",
     email,
-    info: `Code envoyé à ${email}. Vérifie ta boîte mail (et les spams).`,
+    info: `Email envoyé à ${email}. Clique sur le lien reçu, OU saisis le code à 6 chiffres si présent dans le mail.`,
   };
 }
 

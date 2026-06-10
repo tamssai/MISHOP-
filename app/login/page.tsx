@@ -90,24 +90,39 @@ function CodeForm({
     <form action={action} className="space-y-4">
       <input type="hidden" name="email" value={state.email ?? ""} />
 
+      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-sm text-emerald-800">
+        <p className="font-semibold mb-1">📩 Email envoyé !</p>
+        <p>
+          Ouvre le mail reçu à <strong>{state.email}</strong> et
+          <strong> clique sur le lien</strong> &quot;Se connecter&quot;. Tu
+          seras automatiquement redirigé(e) ici.
+        </p>
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-slate-200" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-white px-2 text-slate-500">
+            ou saisis le code à 6 chiffres
+          </span>
+        </div>
+      </div>
+
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">
-          Code de connexion
-        </label>
         <input
           name="token"
           type="text"
           inputMode="numeric"
           autoComplete="one-time-code"
-          required
-          autoFocus
           maxLength={6}
           pattern="[0-9]{6}"
           placeholder="123456"
           className="w-full px-3 py-3 text-center text-2xl font-mono tracking-widest border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-phoenix-500"
         />
-        <p className="text-xs text-slate-500 mt-1">
-          Code à 6 chiffres envoyé à <strong>{state.email}</strong>
+        <p className="text-xs text-slate-500 mt-1 text-center">
+          Si le code apparait dans ton email (template personnalisé)
         </p>
       </div>
 
