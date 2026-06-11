@@ -22,6 +22,7 @@ const CONTRACT_BADGE: Record<Agent["contractType"], string> = {
 export default function SitePanel({
   allSites,
   site,
+  assignedAgents,
   agentsInRadius,
   agentsAllSorted,
   viewMode,
@@ -41,6 +42,7 @@ export default function SitePanel({
 }: {
   allSites: Site[];
   site: Site | null;
+  assignedAgents: AgentWithDistance[];
   agentsInRadius: AgentWithDistance[];
   agentsAllSorted: AgentWithDistance[];
   viewMode: ViewMode;
@@ -145,6 +147,7 @@ export default function SitePanel({
         ) : site ? (
           <SiteView
             site={site}
+            assignedAgents={assignedAgents}
             agentsInRadius={agentsInRadius}
             agentsAllSorted={agentsAllSorted}
             viewMode={viewMode}
@@ -275,6 +278,7 @@ function SitesList({
 
 function SiteView({
   site,
+  assignedAgents,
   agentsInRadius,
   agentsAllSorted,
   viewMode,
@@ -285,6 +289,7 @@ function SiteView({
   onSelectAgent,
 }: {
   site: Site;
+  assignedAgents: AgentWithDistance[];
   agentsInRadius: AgentWithDistance[];
   agentsAllSorted: AgentWithDistance[];
   viewMode: ViewMode;
@@ -332,6 +337,26 @@ function SiteView({
         <Stat label={`Dans ${radiusKm} km`} value={agentsInRadius.length} />
         <Stat label="CDI" value={cdi} accent="emerald" />
         <Stat label="CDD" value={cdd} accent="blue" />
+      </div>
+
+      {/* Agents travaillant sur ce site (en attente du fichier d'affectations) */}
+      <div className="mb-4">
+        <SectionHeader
+          title="Agents travaillant sur ce site"
+          count={assignedAgents.length}
+        />
+        {assignedAgents.length === 0 ? (
+          <div className="text-xs text-slate-500 bg-slate-50 border border-dashed border-slate-300 rounded-lg p-3">
+            🕓 En attente du fichier d&apos;affectations Phoenix. Cette liste
+            se remplira automatiquement dès qu&apos;il sera importé.
+          </div>
+        ) : (
+          <AgentList
+            agents={assignedAgents}
+            selectedAgentId={selectedAgentId}
+            onSelectAgent={onSelectAgent}
+          />
+        )}
       </div>
 
       <div className="bg-slate-100 rounded-lg p-1 flex text-xs mb-4">

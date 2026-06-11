@@ -264,6 +264,7 @@ export default function DashboardClient({
         <SitePanel
           allSites={sites}
           site={selectedSite}
+          assignedAgents={assignedAgents}
           agentsInRadius={agentsInRadius}
           agentsAllSorted={agentsAllSorted}
           viewMode={viewMode}
