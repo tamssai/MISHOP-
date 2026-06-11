@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Site, Agent } from "@/lib/data";
 import { haversineKm } from "@/lib/geo";
@@ -159,19 +159,25 @@ export default function DashboardClient({
     agentsInRadius,
   ]);
 
-  const handleSelectSite = (id: string) => {
-    setSelectedSiteId(id);
-    setSelectedAgentId(null);
-    setViewMode("radius");
-    // On vide la recherche pour montrer les agents du site
-    if (searchMode === "site") setSearchQuery("");
-  };
+  const handleSelectSite = useCallback(
+    (id: string) => {
+      setSelectedSiteId(id);
+      setSelectedAgentId(null);
+      setViewMode("radius");
+      if (searchMode === "site") setSearchQuery("");
+    },
+    [searchMode],
+  );
 
-  const handleClearSite = () => {
+  const handleClearSite = useCallback(() => {
     setSelectedSiteId(null);
     setSelectedAgentId(null);
     setViewMode("radius");
-  };
+  }, []);
+
+  const handleSelectAgent = useCallback((id: string) => {
+    setSelectedAgentId(id);
+  }, []);
 
   const handleAddSite = async (site: Site) => {
     // Mise à jour optimiste — l'abonnement realtime se chargera de la synchro
@@ -207,7 +213,7 @@ export default function DashboardClient({
           selectedAgent={selectedAgent}
           radiusKm={RADIUS_KM}
           onSelectSite={handleSelectSite}
-          onSelectAgent={setSelectedAgentId}
+          onSelectAgent={handleSelectAgent}
         />
         <div className="absolute top-3 left-3 bg-white/95 backdrop-blur rounded-lg shadow-md px-3 py-2 text-xs z-[500] max-w-xs">
           <div className="font-medium text-slate-800">
@@ -241,7 +247,7 @@ export default function DashboardClient({
           selectedAgentId={selectedAgentId}
           onSelectSite={handleSelectSite}
           onClearSite={handleClearSite}
-          onSelectAgent={setSelectedAgentId}
+          onSelectAgent={handleSelectAgent}
           onOpenAddModal={(mode) => {
             setModalInitialMode(mode);
             setModalOpen(true);

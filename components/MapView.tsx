@@ -72,6 +72,9 @@ function createClusterCustomIcon(cluster: L.MarkerCluster) {
   });
 }
 
+/**
+ * Cadre la carte sur l'ensemble des sites une seule fois au chargement.
+ */
 function FitToSites({ sites }: { sites: Site[] }) {
   const map = useMap();
   const didInit = useRef(false);
@@ -84,14 +87,36 @@ function FitToSites({ sites }: { sites: Site[] }) {
   return null;
 }
 
-function FlyTo({ lat, lng, zoom }: { lat: number; lng: number; zoom: number }) {
+/**
+ * Déplace la carte vers une cible.
+ * Utilise une clé unique pour ne déclencher l'animation qu'une fois par cible.
+ */
+function FlyTo({
+  lat,
+  lng,
+  zoom,
+  triggerKey,
+}: {
+  lat: number;
+  lng: number;
+  zoom: number;
+  triggerKey: string;
+}) {
   const map = useMap();
+  const lastKey = useRef<string | null>(null);
   useEffect(() => {
+    if (lastKey.current === triggerKey) return;
+    lastKey.current = triggerKey;
     map.flyTo([lat, lng], zoom, { duration: 0.8 });
-  }, [map, lat, lng, zoom]);
+  }, [map, lat, lng, zoom, triggerKey]);
   return null;
 }
 
+/**
+ * Layer de clustering pour les sites.
+ * Le cluster est créé UNE SEULE FOIS et les markers sont mis à jour à chaque
+ * changement de sélection sans tout recréer.
+ */
 function SitesClusterLayer({
   sites,
   selectedSiteId,
@@ -103,13 +128,13 @@ function SitesClusterLayer({
 }) {
   const map = useMap();
   const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
+  const markersRef = useRef<Map<string, L.Marker>>(new Map());
+  // Garde la dernière version du callback sans déclencher de re-render
+  const onSelectRef = useRef(onSelectSite);
+  onSelectRef.current = onSelectSite;
 
+  // Création unique du cluster + markers
   useEffect(() => {
-    if (clusterRef.current) {
-      clusterRef.current.clearLayers();
-      map.removeLayer(clusterRef.current);
-    }
-
     const cluster = L.markerClusterGroup({
       showCoverageOnHover: false,
       spiderfyOnMaxZoom: true,
@@ -117,9 +142,11 @@ function SitesClusterLayer({
       iconCreateFunction: createClusterCustomIcon,
     });
 
+    const markersMap = new Map<string, L.Marker>();
+
     sites.forEach((site) => {
       const marker = L.marker([site.lat, site.lng], {
-        icon: siteIcon(site, selectedSiteId === site.id),
+        icon: siteIcon(site, false),
       });
       const approx = site.approximate
         ? '<br><em style="color:#9a3412">⚠ Position approximative</em>'
@@ -141,25 +168,38 @@ function SitesClusterLayer({
           );
           if (btn) {
             btn.onclick = () => {
-              onSelectSite(site.id);
+              onSelectRef.current(site.id);
               map.closePopup();
             };
           }
         }
       });
       cluster.addLayer(marker);
+      markersMap.set(site.id, marker);
     });
 
     map.addLayer(cluster);
     clusterRef.current = cluster;
+    markersRef.current = markersMap;
 
     return () => {
       if (clusterRef.current) {
         map.removeLayer(clusterRef.current);
         clusterRef.current = null;
+        markersRef.current.clear();
       }
     };
-  }, [map, sites, selectedSiteId, onSelectSite]);
+    // sites est la SEULE dep — pas onSelectSite ni selectedSiteId
+  }, [map, sites]);
+
+  // Mise à jour des icônes (ajout/retrait du surlignage rouge) sans tout recréer
+  useEffect(() => {
+    markersRef.current.forEach((marker, id) => {
+      const site = sites.find((s) => s.id === id);
+      if (!site) return;
+      marker.setIcon(siteIcon(site, id === selectedSiteId));
+    });
+  }, [selectedSiteId, sites]);
 
   return null;
 }
@@ -202,7 +242,12 @@ export default function MapView({
 
       {selectedSite && (
         <>
-          <FlyTo lat={selectedSite.lat} lng={selectedSite.lng} zoom={13} />
+          <FlyTo
+            lat={selectedSite.lat}
+            lng={selectedSite.lng}
+            zoom={13}
+            triggerKey={`site:${selectedSite.id}`}
+          />
           <Circle
             center={[selectedSite.lat, selectedSite.lng]}
             radius={radiusKm * 1000}
@@ -218,7 +263,12 @@ export default function MapView({
       )}
 
       {selectedAgent && !selectedSite && (
-        <FlyTo lat={selectedAgent.lat} lng={selectedAgent.lng} zoom={14} />
+        <FlyTo
+          lat={selectedAgent.lat}
+          lng={selectedAgent.lng}
+          zoom={14}
+          triggerKey={`agent:${selectedAgent.id}`}
+        />
       )}
 
       <SitesClusterLayer
