@@ -13,6 +13,7 @@ export type Agent = {
   lat: number;
   lng: number;
   approximate: boolean;
+  assignedSiteId?: string | null;
 };
 
 export const agents: Agent[] = agentsJson as Agent[];

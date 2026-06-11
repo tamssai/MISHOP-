@@ -131,11 +131,18 @@ export default function DashboardClient({
       .sort((a, b) => a.distanceKm - b.distanceKm);
   }, [agentsWithDistance, selectedSite]);
 
-  // Agents affectés à ce site (via la table d'assignment locale)
+  // Agents affectés à ce site:
+  // 1. via la colonne assignedSiteId du fichier d'affectations Phoenix
+  // 2. via la table d'assignment locale (overrides manuels via UI)
   const assignedAgents = useMemo(() => {
     if (!selectedSite) return [];
     return agentsWithDistance
-      .filter((a) => assignments[a.id] === selectedSite.id)
+      .filter((a) => {
+        const manualSiteId = assignments[a.id];
+        const fileSiteId = a.assignedSiteId;
+        const effective = manualSiteId ?? fileSiteId;
+        return effective === selectedSite.id;
+      })
       .sort((a, b) => a.fullName.localeCompare(b.fullName));
   }, [agentsWithDistance, selectedSite, assignments]);
 
