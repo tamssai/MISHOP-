@@ -339,16 +339,16 @@ function SiteView({
         <Stat label="CDD" value={cdd} accent="blue" />
       </div>
 
-      {/* Agents travaillant sur ce site (en attente du fichier d'affectations) */}
+      {/* Agents affectés à ce site (d'après le fichier RH Phoenix) */}
       <div className="mb-4">
         <SectionHeader
           title="Agents travaillant sur ce site"
           count={assignedAgents.length}
         />
         {assignedAgents.length === 0 ? (
-          <div className="text-xs text-slate-500 bg-slate-50 border border-dashed border-slate-300 rounded-lg p-3">
-            🕓 En attente du fichier d&apos;affectations Phoenix. Cette liste
-            se remplira automatiquement dès qu&apos;il sera importé.
+          <div className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-3">
+            Aucun agent n&apos;est affecté à ce site dans le dernier fichier
+            Phoenix.
           </div>
         ) : (
           <AgentList
