@@ -1,28 +1,16 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { SESSION_COOKIE } from "@/lib/auth";
 import { logout } from "@/app/login/actions";
 import DashboardClient from "@/components/DashboardClient";
 import { sites, agents } from "@/lib/data";
 
-export default async function DashboardPage() {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+export default function DashboardPage() {
+  const session = cookies().get(SESSION_COOKIE);
+  if (!session?.value) {
     redirect("/login");
   }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role, email, full_name")
-    .eq("id", user.id)
-    .single();
-
-  const isAdmin = profile?.role === "admin";
-  const displayEmail = profile?.email ?? user.email ?? "";
+  const userEmail = decodeURIComponent(session.value);
 
   return (
     <div className="flex flex-col h-screen">
@@ -37,16 +25,8 @@ export default async function DashboardPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="hidden sm:inline text-slate-300">{displayEmail}</span>
-          {isAdmin && (
-            <Link
-              href="/admin"
-              className="bg-phoenix-600 hover:bg-phoenix-700 px-3 py-1.5 rounded-md text-sm font-medium"
-            >
-              Admin
-            </Link>
-          )}
+        <div className="flex items-center gap-4 text-sm">
+          <span className="hidden sm:inline text-slate-300">{userEmail}</span>
           <form action={logout}>
             <button
               type="submit"
