@@ -10,6 +10,10 @@ import {
   saveCustomSite,
   saveCustomAgent,
   subscribeToCustomData,
+  loadAssignments,
+  assignAgentToSite,
+  unassignAgent,
+  type AssignmentMap,
 } from "@/lib/storage";
 import SitePanel from "./SitePanel";
 import AddItemModal from "./AddItemModal";
@@ -39,6 +43,7 @@ export default function DashboardClient({
 }) {
   const [customSites, setCustomSites] = useState<Site[]>([]);
   const [customAgents, setCustomAgents] = useState<Agent[]>([]);
+  const [assignments, setAssignments] = useState<AssignmentMap>({});
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("radius");
@@ -60,6 +65,7 @@ export default function DashboardClient({
       if (cancelled) return;
       setCustomSites(sites);
       setCustomAgents(agents);
+      setAssignments(loadAssignments());
     })();
 
     const unsubscribe = subscribeToCustomData({
@@ -71,6 +77,23 @@ export default function DashboardClient({
       cancelled = true;
       unsubscribe();
     };
+  }, []);
+
+  const handleAssignAgent = useCallback(
+    (agentId: string, siteId: string) => {
+      assignAgentToSite(agentId, siteId);
+      setAssignments((prev) => ({ ...prev, [agentId]: siteId }));
+    },
+    [],
+  );
+
+  const handleUnassignAgent = useCallback((agentId: string) => {
+    unassignAgent(agentId);
+    setAssignments((prev) => {
+      const next = { ...prev };
+      delete next[agentId];
+      return next;
+    });
   }, []);
 
   // Fusion base + ajouts custom
@@ -107,6 +130,14 @@ export default function DashboardClient({
       .filter((a) => a.distanceKm <= RADIUS_KM)
       .sort((a, b) => a.distanceKm - b.distanceKm);
   }, [agentsWithDistance, selectedSite]);
+
+  // Agents affectés à ce site (via la table d'assignment locale)
+  const assignedAgents = useMemo(() => {
+    if (!selectedSite) return [];
+    return agentsWithDistance
+      .filter((a) => assignments[a.id] === selectedSite.id)
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
+  }, [agentsWithDistance, selectedSite, assignments]);
 
   const agentsAllSorted = useMemo(() => {
     if (!selectedSite) return [];

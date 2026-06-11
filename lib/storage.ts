@@ -8,6 +8,7 @@ import { getSupabase } from "./supabase";
 
 const SITES_KEY = "phoenix:custom_sites";
 const AGENTS_KEY = "phoenix:custom_agents";
+const ASSIGNMENTS_KEY = "phoenix:assignments";
 
 // ============== MAPPING DB ↔ TS ==============
 
@@ -182,6 +183,45 @@ export async function saveCustomAgent(agent: Agent): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+// ============== AFFECTATIONS AGENT → SITE ==============
+// Map de agent.id → site.id, stockée en localStorage.
+// (peut être migrée vers Supabase quand l'auth pro sera réactivée)
+
+export type AssignmentMap = Record<string, string>;
+
+export function loadAssignments(): AssignmentMap {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(ASSIGNMENTS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAssignments(map: AssignmentMap) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function assignAgentToSite(agentId: string, siteId: string) {
+  const map = loadAssignments();
+  map[agentId] = siteId;
+  saveAssignments(map);
+}
+
+export function unassignAgent(agentId: string) {
+  const map = loadAssignments();
+  delete map[agentId];
+  saveAssignments(map);
 }
 
 // ============== REALTIME ==============
