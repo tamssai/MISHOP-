@@ -88,6 +88,29 @@ function FitToSites({ sites }: { sites: Site[] }) {
 }
 
 /**
+ * Cadre la carte sur 2 points précis (mode focus agent + son site).
+ */
+function FitToTwoPoints({
+  a,
+  b,
+  triggerKey,
+}: {
+  a: [number, number];
+  b: [number, number];
+  triggerKey: string;
+}) {
+  const map = useMap();
+  const lastKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastKey.current === triggerKey) return;
+    lastKey.current = triggerKey;
+    const bounds = L.latLngBounds([a, b]);
+    map.flyToBounds(bounds, { padding: [60, 60], maxZoom: 14, duration: 0.8 });
+  }, [map, a, b, triggerKey]);
+  return null;
+}
+
+/**
  * Déplace la carte vers une cible.
  * Utilise une clé unique pour ne déclencher l'animation qu'une fois par cible.
  */
@@ -209,6 +232,7 @@ export default function MapView({
   agents,
   selectedSite,
   selectedAgent,
+  focusedAssignedSite,
   radiusKm,
   onSelectSite,
   onSelectAgent,
@@ -217,10 +241,12 @@ export default function MapView({
   agents: Agent[];
   selectedSite: Site | null;
   selectedAgent: Agent | null;
+  focusedAssignedSite: Site | null;
   radiusKm: number;
   onSelectSite: (id: string) => void;
   onSelectAgent: (id: string) => void;
 }) {
+  const isFocusMode = !!selectedAgent && !selectedSite;
   return (
     <MapContainer
       center={[14.4974, -14.4524]}
@@ -238,7 +264,7 @@ export default function MapView({
         maxZoom={20}
       />
 
-      <FitToSites sites={sites} />
+      {!isFocusMode && <FitToSites sites={sites} />}
 
       {selectedSite && (
         <>
@@ -262,7 +288,17 @@ export default function MapView({
         </>
       )}
 
-      {selectedAgent && !selectedSite && (
+      {/* Mode focus: agent sélectionné sans site → cadre sur agent + son site */}
+      {isFocusMode && selectedAgent && focusedAssignedSite && (
+        <FitToTwoPoints
+          a={[selectedAgent.lat, selectedAgent.lng]}
+          b={[focusedAssignedSite.lat, focusedAssignedSite.lng]}
+          triggerKey={`focus:${selectedAgent.id}`}
+        />
+      )}
+
+      {/* Agent sélectionné sans site assigné → simple flyTo */}
+      {isFocusMode && selectedAgent && !focusedAssignedSite && (
         <FlyTo
           lat={selectedAgent.lat}
           lng={selectedAgent.lng}

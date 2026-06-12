@@ -178,7 +178,19 @@ export default function DashboardClient({
   const selectedAgent =
     agents.find((a) => a.id === selectedAgentId) ?? null;
 
+  // Mode "focus agent" : un agent est sélectionné depuis la recherche
+  // et aucun site n'est sélectionné. On masque tout pour ne garder que
+  // l'agent + son site d'affectation.
+  const isFocusOnAgent = !!selectedAgent && !selectedSite;
+  const focusedAssignedSite = useMemo(() => {
+    if (!isFocusOnAgent || !selectedAgent?.assignedSiteId) return null;
+    return sites.find((s) => s.id === selectedAgent.assignedSiteId) ?? null;
+  }, [isFocusOnAgent, selectedAgent, sites]);
+
   const agentsOnMap = useMemo(() => {
+    if (isFocusOnAgent && selectedAgent) {
+      return [selectedAgent];
+    }
     if (searchMode === "agent" && searchQuery.trim() && agentSearchResults.length > 0) {
       return agentSearchResults.slice(0, 200);
     }
@@ -189,6 +201,8 @@ export default function DashboardClient({
     }
     return [];
   }, [
+    isFocusOnAgent,
+    selectedAgent,
     searchMode,
     searchQuery,
     agentSearchResults,
@@ -197,6 +211,14 @@ export default function DashboardClient({
     agentsAllSorted,
     agentsInRadius,
   ]);
+
+  // En mode focus, on ne garde qu'un seul site visible (celui de l'agent)
+  const sitesForMap = useMemo(() => {
+    if (isFocusOnAgent && focusedAssignedSite) {
+      return [focusedAssignedSite];
+    }
+    return sites;
+  }, [isFocusOnAgent, focusedAssignedSite, sites]);
 
   const handleSelectSite = useCallback(
     (id: string) => {
@@ -246,10 +268,11 @@ export default function DashboardClient({
     <div className="flex h-full">
       <div className="flex-1 relative">
         <MapView
-          sites={sites}
+          sites={sitesForMap}
           agents={agentsOnMap}
           selectedSite={selectedSite}
           selectedAgent={selectedAgent}
+          focusedAssignedSite={focusedAssignedSite}
           radiusKm={RADIUS_KM}
           onSelectSite={handleSelectSite}
           onSelectAgent={handleSelectAgent}
