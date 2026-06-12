@@ -168,7 +168,7 @@ export function exportAllAgents(agents: Agent[], sites: Site[]) {
 const RADIUS_KM = 3;
 
 export function exportSiteDetail(site: Site, agents: Agent[], sites: Site[]) {
-  const doc = new jsPDF();
+  const doc = new jsPDF({ orientation: "landscape" });
   const sitesById = new Map(sites.map((s) => [s.id, s]));
 
   addHeader(
@@ -212,20 +212,44 @@ export function exportSiteDetail(site: Site, agents: Agent[], sites: Site[]) {
   } else {
     autoTable(doc, {
       startY: 70,
-      head: [["Matricule", "Prénom", "Nom", "Contrat", "Adresse domicile"]],
+      head: [
+        [
+          "Matricule",
+          "Prénom",
+          "Nom",
+          "Contrat",
+          "Adresse domicile",
+          "Dist. domicile → site",
+        ],
+      ],
       body: assigned
         .slice()
         .sort((a, b) => a.nom.localeCompare(b.nom))
-        .map((a) => [
-          a.matricule || "—",
-          a.prenom,
-          a.nom,
-          a.contractType,
-          a.address || "—",
-        ]),
+        .map((a) => {
+          const d = haversineKm(
+            { lat: site.lat, lng: site.lng },
+            { lat: a.lat, lng: a.lng },
+          );
+          return [
+            a.matricule || "—",
+            a.prenom,
+            a.nom,
+            a.contractType,
+            a.address || "—",
+            `${d.toFixed(2)} km`,
+          ];
+        }),
       theme: "striped",
       headStyles: HEAD_STYLE,
       styles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 22 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 30 },
+        3: { cellWidth: 18 },
+        4: { cellWidth: 100 },
+        5: { cellWidth: 30 },
+      },
     });
   }
 
@@ -277,30 +301,50 @@ export function exportSiteDetail(site: Site, agents: Agent[], sites: Site[]) {
           "Prénom",
           "Nom",
           "Contrat",
-          "Distance",
+          "Adresse domicile",
+          "Dist. → ce site",
           "Site affecté",
+          "Dist. → son site",
         ],
       ],
       body: nearby.map((a) => {
         const ownSite = a.assignedSiteId
           ? sitesById.get(a.assignedSiteId)
           : null;
+        const distOwn = ownSite
+          ? haversineKm(
+              { lat: ownSite.lat, lng: ownSite.lng },
+              { lat: a.lat, lng: a.lng },
+            )
+          : null;
         return [
           a.matricule || "—",
           a.prenom,
           a.nom,
           a.contractType,
+          a.address || "—",
           `${a.distanceKm.toFixed(2)} km`,
           ownSite
             ? ownSite.id === site.id
               ? "✓ ce site"
               : `${ownSite.client} — ${ownSite.lieu}`
             : "—",
+          distOwn !== null ? `${distOwn.toFixed(2)} km` : "—",
         ];
       }),
       theme: "striped",
       headStyles: HEAD_STYLE,
       styles: { fontSize: 7 },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 25 },
+        3: { cellWidth: 15 },
+        4: { cellWidth: 65 },
+        5: { cellWidth: 22 },
+        6: { cellWidth: 60 },
+        7: { cellWidth: 22 },
+      },
     });
   }
 
