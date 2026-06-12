@@ -310,11 +310,32 @@ export default function MapView({
         />
       )}
 
-      <SitesClusterLayer
-        sites={sites}
-        selectedSiteId={selectedSite?.id ?? null}
-        onSelectSite={onSelectSite}
-      />
+      {/* Cluster des sites — SEULEMENT hors mode focus pour éviter
+          qu'un cluster vestige s'affiche au-dessus du marker direct */}
+      {!isFocusMode && (
+        <SitesClusterLayer
+          sites={sites}
+          selectedSiteId={selectedSite?.id ?? null}
+          onSelectSite={onSelectSite}
+        />
+      )}
+
+      {/* En mode focus: site d'affectation rendu directement (pas via cluster) */}
+      {isFocusMode && focusedAssignedSite && (
+        <Marker
+          position={[focusedAssignedSite.lat, focusedAssignedSite.lng]}
+          icon={siteIcon(focusedAssignedSite, true)}
+          eventHandlers={{ click: () => onSelectSite(focusedAssignedSite.id) }}
+        >
+          <Popup>
+            <div className="text-sm">
+              <strong>{focusedAssignedSite.client}</strong>
+              <br />
+              <span className="text-slate-500">{focusedAssignedSite.lieu}</span>
+            </div>
+          </Popup>
+        </Marker>
+      )}
 
       {agents.map((a) => {
         const isHighlighted = selectedAgent?.id === a.id;
