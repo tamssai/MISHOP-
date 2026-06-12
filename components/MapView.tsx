@@ -206,8 +206,18 @@ function SitesClusterLayer({
     markersRef.current = markersMap;
 
     return () => {
-      if (clusterRef.current) {
-        map.removeLayer(clusterRef.current);
+      const cluster = clusterRef.current;
+      if (cluster) {
+        try {
+          map.closePopup();
+          (cluster as L.MarkerClusterGroup & {
+            unspiderfy?: () => void;
+          }).unspiderfy?.();
+          cluster.clearLayers();
+          map.removeLayer(cluster);
+        } catch {
+          // ignore
+        }
         clusterRef.current = null;
         markersRef.current.clear();
       }
