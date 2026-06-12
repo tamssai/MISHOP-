@@ -246,7 +246,9 @@ export default function MapView({
   onSelectSite: (id: string) => void;
   onSelectAgent: (id: string) => void;
 }) {
-  const isFocusMode = !!selectedAgent && !selectedSite;
+  // Le mode focus est actif dès qu'un agent est sélectionné
+  // (même si un site est sélectionné par ailleurs dans la sidebar).
+  const isFocusMode = !!selectedAgent;
   return (
     <MapContainer
       center={[14.4974, -14.4524]}
@@ -266,7 +268,8 @@ export default function MapView({
 
       {!isFocusMode && <FitToSites sites={sites} />}
 
-      {selectedSite && (
+      {/* Site sélectionné: zoom + cercle 3km — désactivé en mode focus agent */}
+      {selectedSite && !isFocusMode && (
         <>
           <FlyTo
             lat={selectedSite.lat}
@@ -288,7 +291,7 @@ export default function MapView({
         </>
       )}
 
-      {/* Mode focus: agent sélectionné sans site → cadre sur agent + son site */}
+      {/* Mode focus avec site d'affectation: cadre les 2 points */}
       {isFocusMode && selectedAgent && focusedAssignedSite && (
         <FitToTwoPoints
           a={[selectedAgent.lat, selectedAgent.lng]}
@@ -297,7 +300,7 @@ export default function MapView({
         />
       )}
 
-      {/* Agent sélectionné sans site assigné → simple flyTo */}
+      {/* Agent sélectionné sans site assigné: simple zoom sur lui */}
       {isFocusMode && selectedAgent && !focusedAssignedSite && (
         <FlyTo
           lat={selectedAgent.lat}

@@ -178,10 +178,10 @@ export default function DashboardClient({
   const selectedAgent =
     agents.find((a) => a.id === selectedAgentId) ?? null;
 
-  // Mode "focus agent" : un agent est sélectionné depuis la recherche
-  // et aucun site n'est sélectionné. On masque tout pour ne garder que
-  // l'agent + son site d'affectation.
-  const isFocusOnAgent = !!selectedAgent && !selectedSite;
+  // Mode "focus agent" : dès qu'un agent est sélectionné (peu importe
+  // si un site est aussi sélectionné dans la sidebar), on masque tout
+  // pour ne garder que l'agent + son site d'affectation sur la carte.
+  const isFocusOnAgent = !!selectedAgent;
   const focusedAssignedSite = useMemo(() => {
     if (!isFocusOnAgent || !selectedAgent?.assignedSiteId) return null;
     return sites.find((s) => s.id === selectedAgent.assignedSiteId) ?? null;
