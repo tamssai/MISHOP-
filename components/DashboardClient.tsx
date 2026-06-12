@@ -17,6 +17,7 @@ import {
 } from "@/lib/storage";
 import SitePanel from "./SitePanel";
 import AddItemModal from "./AddItemModal";
+import ExportMenu from "./ExportMenu";
 
 const MapView = dynamic(() => import("./MapView"), {
   ssr: false,
@@ -253,17 +254,24 @@ export default function DashboardClient({
           onSelectSite={handleSelectSite}
           onSelectAgent={handleSelectAgent}
         />
-        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur rounded-lg shadow-md px-3 py-2 text-xs z-[500] max-w-xs">
-          <div className="font-medium text-slate-800">
-            {sites.length} sites · {agents.length} agents (
-            {agents.filter((a) => a.contractType === "CDI").length} CDI /{" "}
-            {agents.filter((a) => a.contractType === "CDD").length} CDD)
-          </div>
-          {selectedSite && (
-            <div className="text-slate-500 mt-0.5 truncate">
-              📍 {selectedSite.client} – {selectedSite.lieu}
+        <div className="absolute top-3 left-3 z-[500] flex flex-col gap-2 items-start">
+          <div className="bg-white/95 backdrop-blur rounded-lg shadow-md px-3 py-2 text-xs max-w-xs">
+            <div className="font-medium text-slate-800">
+              {sites.length} sites · {agents.length} agents (
+              {agents.filter((a) => a.contractType === "CDI").length} CDI /{" "}
+              {agents.filter((a) => a.contractType === "CDD").length} CDD)
             </div>
-          )}
+            {selectedSite && (
+              <div className="text-slate-500 mt-0.5 truncate">
+                📍 {selectedSite.client} – {selectedSite.lieu}
+              </div>
+            )}
+          </div>
+          <ExportMenu
+            sites={sites}
+            agents={agents}
+            selectedSite={selectedSite}
+          />
         </div>
       </div>
 
