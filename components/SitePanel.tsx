@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Site, Agent } from "@/lib/data";
+import { haversineKm } from "@/lib/geo";
 import type {
   AgentWithDistance,
   ViewMode,
@@ -134,9 +135,9 @@ export default function SitePanel({
           searchMode === "agent" ? (
             <AgentSearchResults
               results={agentSearchResults}
+              sites={allSites}
               selectedAgentId={selectedAgentId}
               onSelectAgent={onSelectAgent}
-              hasSelectedSite={!!site}
             />
           ) : (
             <SiteSearchResults
@@ -424,37 +425,55 @@ function SiteView({
 
 function AgentSearchResults({
   results,
+  sites,
   selectedAgentId,
   onSelectAgent,
-  hasSelectedSite,
 }: {
   results: AgentWithDistance[];
+  sites: Site[];
   selectedAgentId: string | null;
   onSelectAgent: (id: string) => void;
-  hasSelectedSite: boolean;
 }) {
+  const sitesById = useMemo(
+    () => new Map<string, Site>(sites.map((s) => [s.id, s])),
+    [sites],
+  );
+
   return (
     <div>
       <h2 className="font-bold text-lg mb-1">Agents ({results.length})</h2>
       <p className="text-sm text-slate-500 mb-3">
-        {hasSelectedSite
-          ? "Distance calculée par rapport au site sélectionné."
-          : "Cliquez sur un agent pour le voir sur la carte."}
+        Distance entre le domicile de l&apos;agent et son site d&apos;affectation.
       </p>
       {results.length === 0 ? (
         <EmptyMsg text="Aucun agent ne correspond." />
       ) : (
         <>
           <ul className="space-y-2">
-            {results.slice(0, 200).map((a) => (
-              <AgentCard
-                key={a.id}
-                a={a}
-                isSelected={selectedAgentId === a.id}
-                onClick={() => onSelectAgent(a.id)}
-                showDistance={hasSelectedSite}
-              />
-            ))}
+            {results.slice(0, 200).map((a) => {
+              const ownSite = a.assignedSiteId
+                ? sitesById.get(a.assignedSiteId)
+                : null;
+              const distToOwn = ownSite
+                ? haversineKm(
+                    { lat: ownSite.lat, lng: ownSite.lng },
+                    { lat: a.lat, lng: a.lng },
+                  )
+                : null;
+              return (
+                <AgentCard
+                  key={a.id}
+                  a={a}
+                  isSelected={selectedAgentId === a.id}
+                  onClick={() => onSelectAgent(a.id)}
+                  showDistance={distToOwn !== null}
+                  customDistanceKm={distToOwn ?? undefined}
+                  customDistanceLabel={
+                    ownSite ? `de son site (${ownSite.client})` : undefined
+                  }
+                />
+              );
+            })}
           </ul>
           {results.length > 200 && (
             <p className="text-xs text-slate-400 italic text-center pt-2">
@@ -551,12 +570,18 @@ function AgentCard({
   isSelected,
   onClick,
   showDistance,
+  customDistanceKm,
+  customDistanceLabel,
 }: {
   a: AgentWithDistance;
   isSelected: boolean;
   onClick: () => void;
   showDistance: boolean;
+  customDistanceKm?: number;
+  customDistanceLabel?: string;
 }) {
+  const displayedDistance =
+    customDistanceKm !== undefined ? customDistanceKm : a.distanceKm;
   return (
     <li>
       <button
@@ -579,7 +604,12 @@ function AgentCard({
           <span className="truncate">Mat. {a.matricule || "—"}</span>
           {showDistance && (
             <span className="font-semibold text-slate-700 shrink-0">
-              {a.distanceKm.toFixed(2)} km
+              {displayedDistance.toFixed(2)} km
+              {customDistanceLabel && (
+                <span className="text-slate-400 font-normal ml-1">
+                  {customDistanceLabel}
+                </span>
+              )}
             </span>
           )}
         </div>
